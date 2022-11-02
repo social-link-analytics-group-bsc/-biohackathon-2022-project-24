@@ -1,0 +1,24 @@
+api_europepmc_params:
+  root_url:
+
+  rest_articles:
+    root_url: https://www.ebi.ac.uk/europepmc/webservices/rest/
+  oai_service:
+    root_url: http://europepmc.org/oai.cgi 
+  annotations_api:
+    root_url: https://www.ebi.ac.uk/europepmc/annotations_api/ 
+  archive_api:
+    root_url: https://europepmc.org/ftp/oa/pmcid.txt.gz
+
+mongodb_params:
+  
+  cred_filename: mongodb_credentials.yaml
+  articles:
+    name: article
+    index: null
+  metadata: 
+    name: metadata
+    index: null 
+
+sql_params:
+  db_file: ./db.sql
