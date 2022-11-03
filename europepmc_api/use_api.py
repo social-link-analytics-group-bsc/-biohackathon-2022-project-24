@@ -8,7 +8,10 @@ import io
 import logging
 import os
 import yaml
+import sys
 
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
+from db_utils import db_utils
 
 logger = logging.getLogger(__name__)
 
@@ -16,14 +19,6 @@ logger = logging.getLogger(__name__)
 config_path = os.path.join(os.path.dirname(
     __file__), '../config', 'config.yaml')
 config_all = yaml.safe_load(open(config_path))
-
-mongo_cred_path = os.path.join(
-    os.path.dirname(__file__),
-    "../config",
-    config_all["mongodb_params"]["cred_filename"],
-)
-mongodb_credentials = yaml.safe_load(open(mongo_cred_path))[
-    "mongodb_credentials"]
 
 
 def get_request(url, params):
@@ -88,33 +83,6 @@ def retrieveSections(root):
     return dictSection
 
 
-def commitToDatabase(conn, pmcid, dictSection, dictMetadata, supMaterial):
-    c = conn.cursor()
-    c.execute(f'''INSERT OR IGNORE INTO Main
-    values ("{pmcid}", "{dictSection["Intro"]}", "{dictSection["Method"]}",
-    "{dictSection["Result"]}", "{dictSection["Discussion"]}", "{supMaterial}",
-     "{dictMetadata["issn"]["ppub"]}", "{dictMetadata["issn"]["epub"]}",
-     "{dictMetadata["journalTitle"]}", "{dictMetadata["publisherName"]}")''')
-    conn.commit()
-
-
-def createDatabase(c, rerun):
-    if rerun is True:
-        c.execute('''DROP TABLE IF EXISTS Main''')
-    c.execute('''CREATE TABLE IF NOT EXISTS "Main" (
-        "pmcid"	TEXT NOT NULL,
-        "Introduction"	TEXT,
-        "Methods" TEXT,
-        "Result" TEXT,
-        "Discussion" TEXT,
-        "SupMaterial" TEXT,
-        "ISSN PPUB" TEXT,
-        "ISSN EPUB" TEXT,
-        "JournalTitle" TEXT,
-        "PublisherName" TEXT,
-        PRIMARY KEY("pmcid")
-            )''')
-
 
 def apiSearch(pmcid, root_url):
     req = f'{root_url}{pmcid}/fullTextXML'
@@ -149,43 +117,22 @@ def get_archive(file_location, url, rerun=False):
             yield OAFile
 
 
-def _data_retrieve(c, command):
-    c.execute(command)
-    for row in c.fetchall():
-        yield dict(row)
-
-
-def retrieve_existing_record(c):
-
-    command = """SELECT pmcid FROM MAIN;"""
-    return _data_retrieve(c, command)
-
-
-def retrieve_method_section(c):
-
-    command = """SELECT pmcid, Methods FROM MAIN;"""
-    return _data_retrieve(c, command)
 
 
 def main():
     api_root_article = config_all['api_europepmc_params']['rest_articles']['root_url']
     api_root_archive = config_all['api_europepmc_params']['archive_api']['root_url']
-    db_file = config_all['sql_params']['db_file']
     file_root_archive = config_all['api_europepmc_params']['archive_file']
     rerun_archive = config_all['api_europepmc_params']['rerun_archive']
 
-    # # Connect to the SQLite database
-    # # If name not found, it will create a new database
-    conn = sqlite3.connect(db_file)
-    # To return dictionary
-    conn.row_factory = sqlite3.Row
-    c = conn.cursor()
 
     # Get the present pcmid in case rerun=false to avoir re-dl everything
-    already_dl_pcmid = [i for i in retrieve_existing_record(c)]
+    already_dl_pcmid = [i for i in db_utils.retrieve_existing_record()]
 
     dummyCounter = 0
-    createDatabase(c, rerun_archive)
+    if rerun_archive is True:
+        db_utils.drop_database()
+    db_utils.create_database()
     archive = get_archive(file_root_archive, api_root_archive, rerun_archive)
     for OAFile in archive:
         dummyCounter += 1
@@ -196,7 +143,7 @@ def main():
                 section = retrieveSections(article)
                 meta_data = retrieveMetadata(article)
                 sup_material = retrieveSupplementary(article)
-                commitToDatabase(conn, pmcid, section, meta_data, sup_material)
+                db_utils.commitToDatabase(pmcid, section, meta_data, sup_material)
             print(dummyCounter)
 
 
