@@ -88,17 +88,19 @@ def retrieveSections(root):
     return dictSection
 
 
-def commitToDatabase(c, pmcid, dictSection, dictMetadata, supMaterial):
+def commitToDatabase(conn, pmcid, dictSection, dictMetadata, supMaterial):
+    c = conn.cursor()
     c.execute(f'''INSERT OR IGNORE INTO Main
     values ("{pmcid}", "{dictSection["Intro"]}", "{dictSection["Method"]}",
     "{dictSection["Result"]}", "{dictSection["Discussion"]}", "{supMaterial}",
      "{dictMetadata["issn"]["ppub"]}", "{dictMetadata["issn"]["epub"]}",
      "{dictMetadata["journalTitle"]}", "{dictMetadata["publisherName"]}")''')
-    # c.commit()
+    conn.commit()
 
 
-def createDatabase(c):
-    c.execute('''DROP TABLE IF EXISTS Main''')
+def createDatabase(c, rerun):
+    if rerun is True:
+        c.execute('''DROP TABLE IF EXISTS Main''')
     c.execute('''CREATE TABLE IF NOT EXISTS "Main" (
         "pmcid"	TEXT NOT NULL,
         "Introduction"	TEXT,
@@ -125,34 +127,77 @@ def apiSearch(pmcid, root_url):
     return root
 
 
+def get_archive(file_location, url, rerun=False):
+
+    if rerun is False:
+        try:
+            open_f = open(file_location, 'rb')
+            f = io.BytesIO(open_f.read())
+        except FileNotFoundError:
+            rerun = True
+    if rerun is True:
+        logger.info(f"Getting the archive at {url}")
+
+        OAUrl = requests.get(url)
+        gzFile = OAUrl.content
+        location = open(file_location, 'wb')
+        location.write(gzFile)
+        f = io.BytesIO(gzFile)
+        logger.info(f"Writing archive in {file_location}")
+    with gzip.GzipFile(fileobj=f) as OAFiles:
+        for OAFile in OAFiles:
+            yield OAFile
+
+
+def _data_retrieve(c, command):
+    c.execute(command)
+    for row in c.fetchall():
+        yield dict(row)
+
+
+def retrieve_existing_record(c):
+
+    command = """SELECT pmcid FROM MAIN;"""
+    return _data_retrieve(c, command)
+
+
+def retrieve_method_section(c):
+
+    command = """SELECT pmcid, Methods FROM MAIN;"""
+    return _data_retrieve(c, command)
+
+
 def main():
     api_root_article = config_all['api_europepmc_params']['rest_articles']['root_url']
     api_root_archive = config_all['api_europepmc_params']['archive_api']['root_url']
     db_file = config_all['sql_params']['db_file']
-
-    # Name of the database
+    file_root_archive = config_all['api_europepmc_params']['archive_file']
+    rerun_archive = config_all['api_europepmc_params']['rerun_archive']
 
     # # Connect to the SQLite database
     # # If name not found, it will create a new database
     conn = sqlite3.connect(db_file)
+    # To return dictionary
+    conn.row_factory = sqlite3.Row
     c = conn.cursor()
 
+    # Get the present pcmid in case rerun=false to avoir re-dl everything
+    already_dl_pcmid = [i for i in retrieve_existing_record(c)]
+
     dummyCounter = 0
-    createDatabase(c)
-    OAUrl = requests.get(api_root_archive)
-    gzFile = OAUrl.content
-    f = io.BytesIO(gzFile)
-    with gzip.GzipFile(fileobj=f) as OAFiles:
-        for OAFile in OAFiles:
-            dummyCounter += 1
-            pmcid = str(OAFile[:-1], "utf-8")
+    createDatabase(c, rerun_archive)
+    archive = get_archive(file_root_archive, api_root_archive, rerun_archive)
+    for OAFile in archive:
+        dummyCounter += 1
+        pmcid = str(OAFile[:-1], "utf-8")
+        if pmcid not in already_dl_pcmid:
             article = apiSearch(pmcid, api_root_article)
             if article:
                 section = retrieveSections(article)
                 meta_data = retrieveMetadata(article)
                 sup_material = retrieveSupplementary(article)
-                commitToDatabase(c, pmcid, section, meta_data, sup_material)
-        print(dummyCounter)
+                commitToDatabase(conn, pmcid, section, meta_data, sup_material)
+            print(dummyCounter)
 
 
 if __name__ == "__main__":
