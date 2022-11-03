@@ -20,6 +20,7 @@ def commitToDatabase(pmcid, dictSection, dictMetadata, supMaterial):
      "{dictMetadata["issn"]["ppub"]}", "{dictMetadata["issn"]["epub"]}",
      "{dictMetadata["journalTitle"]}", "{dictMetadata["publisherName"]}")''')
     _sql_conn.commit()
+    print(f"Inserted {pmcid}")
     c.close()
 
 

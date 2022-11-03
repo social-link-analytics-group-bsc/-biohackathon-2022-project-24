@@ -12,15 +12,5 @@ api_europepmc_params:
   archive_file: ./data/pmcid.txt.gz
   rerun_archive: false
 
-mongodb_params:
-  
-  cred_filename: mongodb_credentials.yaml
-  articles:
-    name: article
-    index: null
-  metadata: 
-    name: metadata
-    index: null 
-
 sql_params:
   db_file: ./data/db.sql

@@ -83,7 +83,6 @@ def retrieveSections(root):
     return dictSection
 
 
-
 def apiSearch(pmcid, root_url):
     req = f'{root_url}{pmcid}/fullTextXML'
     r = requests.get(req)
@@ -113,10 +112,12 @@ def get_archive(file_location, url, rerun=False):
         f = io.BytesIO(gzFile)
         logger.info(f"Writing archive in {file_location}")
     with gzip.GzipFile(fileobj=f) as OAFiles:
+        n=0
         for OAFile in OAFiles:
-            yield OAFile
-
-
+            yield str(OAFile[:-1], 'utf-8')
+            n+=1
+            if n == 100000:
+                return
 
 
 def main():
@@ -124,27 +125,27 @@ def main():
     api_root_archive = config_all['api_europepmc_params']['archive_api']['root_url']
     file_root_archive = config_all['api_europepmc_params']['archive_file']
     rerun_archive = config_all['api_europepmc_params']['rerun_archive']
-
-
-    # Get the present pcmid in case rerun=false to avoir re-dl everything
-    already_dl_pcmid = [i for i in db_utils.retrieve_existing_record()]
-
-    dummyCounter = 0
     if rerun_archive is True:
         db_utils.drop_database()
     db_utils.create_database()
+
+    # Get the present pcmid in case rerun=false to avoir re-dl everything
+    already_dl_pcmid = [i for i in db_utils.retrieve_existing_record()]
+    print(f"Size of already pcmid: {len(already_dl_pcmid)}")
+
+    dummyCounter = 0
     archive = get_archive(file_root_archive, api_root_archive, rerun_archive)
-    for OAFile in archive:
+    list_pmcid = [pmcid for pmcid in archive if pmcid not in already_dl_pcmid]
+    for pmcid in list_pmcid:
         dummyCounter += 1
-        pmcid = str(OAFile[:-1], "utf-8")
-        if pmcid not in already_dl_pcmid:
-            article = apiSearch(pmcid, api_root_article)
-            if article:
-                section = retrieveSections(article)
-                meta_data = retrieveMetadata(article)
-                sup_material = retrieveSupplementary(article)
-                db_utils.commitToDatabase(pmcid, section, meta_data, sup_material)
-            print(dummyCounter)
+        article = apiSearch(pmcid, api_root_article)
+        if article:
+            section = retrieveSections(article)
+            meta_data = retrieveMetadata(article)
+            sup_material = retrieveSupplementary(article)
+            db_utils.commitToDatabase(
+                pmcid, section, meta_data, sup_material)
+        print(f"Done {dummyCounter}, remains {len(list_pmcid) - dummyCounter}")
 
 
 if __name__ == "__main__":
