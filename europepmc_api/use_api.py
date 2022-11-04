@@ -130,7 +130,7 @@ def main():
     db_utils.create_database()
 
     # Get the present pcmid in case rerun=false to avoir re-dl everything
-    already_dl_pcmid = [i for i in db_utils.retrieve_existing_record()]
+    already_dl_pcmid = [i['pmcid'] for i in db_utils.retrieve_existing_record()]
     print(f"Size of already pcmid: {len(already_dl_pcmid)}")
 
     dummyCounter = 0
