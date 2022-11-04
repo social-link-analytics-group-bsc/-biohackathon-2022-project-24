@@ -34,4 +34,5 @@ Machine learning
 * EuropePMC API doc: [https://europepmc.org/RestfulWebService](https://europepmc.org/RestfulWebService)
 * EuropePMC Archive: [https://europepmc.org/ftp/oa/pmcid.txt.gz](https://europepmc.org/ftp/oa/pmcid.txt.gz)
 * Gdrive Project: [https://drive.google.com/drive/folders/1IPJtm82BgrglztLarnqosfqLJ-HkFu5o?usp=sharing](https://drive.google.com/drive/folders/1IPJtm82BgrglztLarnqosfqLJ-HkFu5o?usp=sharing)
+* To share big data: [https://www.eudat.eu/catalogue/b2drop](https://www.eudat.eu/catalogue/b2drop)
 
