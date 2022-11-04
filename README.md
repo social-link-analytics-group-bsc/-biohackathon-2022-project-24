@@ -18,8 +18,8 @@ Machine learning
 
 ### Lead(s)
 
-* Olivier Philippe - BSC - olivier.philippe@bsc.es - Oliph
-* Blanca Calvo - BSC - bcalvo.bsc@gmail.com - BlancaCalvo 
+* Olivier Philippe - BSC - olivier.philippe@bsc.es - [Oliph](https://github.com/Oliph)
+* Blanca Calvo - BSC - bcalvo.bsc@gmail.com - [BlancaCalvo](https://github.com/Oliph)
 
 ### Collaborators
 
