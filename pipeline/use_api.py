@@ -113,7 +113,7 @@ def main():
     api_root_archive = config_all['api_europepmc_params']['archive_api']['root_url']
     file_root_archive = config_all['api_europepmc_params']['archive_file']
     rerun_archive = config_all['api_europepmc_params']['rerun_archive']
-    file_location = config_all['article_file_location']
+    file_location = config_all['ids_file_location']
     #if rerun_archive is True:
      #   db_utils.drop_database()
     #db_utils.create_database()
