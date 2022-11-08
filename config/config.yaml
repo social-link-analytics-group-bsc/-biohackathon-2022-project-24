@@ -11,6 +11,7 @@ api_europepmc_params:
     root_url: https://europepmc.org/ftp/oa/pmcid.txt.gz
   archive_file: ./data/pmcid.txt.gz
   rerun_archive: false
+  article_folder: ./data/articles/
 
 sql_params:
   db_file: ./data/db.sql
