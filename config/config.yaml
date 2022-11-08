@@ -1,20 +1,18 @@
 api_europepmc_params:
-  root_url:
-
   rest_articles:
     root_url: https://www.ebi.ac.uk/europepmc/webservices/rest/
   oai_service:
     root_url: http://europepmc.org/oai.cgi 
   annotations_api:
-    root_url: https://www.ebi.ac.uk/europepmc/annotations_api/ 
+    root_url: http://www.ebi.ac.uk/europepmc/annotations_api/annotationsByArticleIds
   archive_api:
     root_url: https://europepmc.org/ftp/oa/pmcid.txt.gz
   archive_file: ./data/pmcid.txt.gz
   rerun_archive: false
-  article_folder: ./data/articles/
+  article_folder: ./data/clean_articles/
 
-sql_params:
-  db_file: ./data/db.sql
+search_params:
 
-
-ids_file_location: ./data/europepmc_id.txt
+  ids_file_location: ./data/europepmc_id.txt
+  accepted_species: [human, Homo Sapiens]
+  
