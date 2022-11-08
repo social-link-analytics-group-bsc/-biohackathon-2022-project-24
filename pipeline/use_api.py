@@ -2,14 +2,10 @@ import requests
 from requests.exceptions import HTTPError
 
 import xml.etree.ElementTree as ET
-import sqlite3
-import gzip
-import io
 import logging
 import os
 import yaml
 import sys
-import csv
 
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 from db_utils import db_utils
@@ -104,7 +100,7 @@ def getPMCidList(file_location):
       else:
         field = l_split[0]
       pmcid = field.split(':')[1]
-      yield pmcid
+      yield pmcid.rstrip()
     
 
 
@@ -120,15 +116,20 @@ def main():
 
     # Get the present pcmid in case rerun=false to avoir re-dl everything
     # already_dl_pcmid = [i for i in db_utils.retrieve_existing_record()]
-    
 
     dummyCounter = 0
     # archive = get_archive(file_root_archive, api_root_archive, rerun_archive)
-    
+
     for pmcid in getPMCidList(file_location):
-        dummyCounter += 1
         print(pmcid)
+        dummyCounter += 1
         article = apiSearch(pmcid, api_root_article)
+        try:
+            tree = ET.ElementTree(article)
+            with open('data/articles/'+pmcid+'.xml', 'wb') as f:
+                tree.write(f)
+        except AttributeError:
+            print('no output')
 
 
 if __name__ == "__main__":

@@ -16,4 +16,4 @@ sql_params:
   db_file: ./data/db.sql
 
 
-ids_file_location: ./data/europepmc_id-10.txt
+ids_file_location: ./data/europepmc_id.txt
