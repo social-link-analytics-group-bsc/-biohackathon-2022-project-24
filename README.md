@@ -42,12 +42,18 @@ Machine learning
 
 ## Useful links
 
+### Biohackathon
 * Biohackathon webpage: [https://biohackathon-europe.org/](https://biohackathon-europe.org/)
 * Program for the week: [https://biohackathon-europe.org/programme.html](https://biohackathon-europe.org/programme.html)
 * Link to official repository: [https://github.com/elixir-europe/biohackathon-projects-2022/tree/main/24](https://github.com/elixir-europe/biohackathon-projects-2022/tree/main/24)
+
+### EuropePMC
 * EuropePMC webpage: [https://europepmc.org/](https://europepmc.org/)
 * EuropePMC API doc: [https://europepmc.org/RestfulWebService](https://europepmc.org/RestfulWebService)
 * EuropePMC Archive: [https://europepmc.org/ftp/oa/pmcid.txt.gz](https://europepmc.org/ftp/oa/pmcid.txt.gz)
+* Star method information: [https://star-methods.com/](https://star-methods.com/)
+
+
 * Gdrive Project: [https://drive.google.com/drive/folders/1IPJtm82BgrglztLarnqosfqLJ-HkFu5o?usp=sharing](https://drive.google.com/drive/folders/1IPJtm82BgrglztLarnqosfqLJ-HkFu5o?usp=sharing)
 * To share big data: [https://www.eudat.eu/catalogue/b2drop](https://www.eudat.eu/catalogue/b2drop)
 
