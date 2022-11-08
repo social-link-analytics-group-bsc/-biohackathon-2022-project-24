@@ -142,8 +142,8 @@ def retrievePmcids(root):
 
 def main():
     api_root_article = config_all['api_europepmc_params']['rest_articles']['root_url']
-    file_name = config_all['ids_file_location']
-    query = config_all['query']
+    file_name = config_all['search_params']['ids_file_location']
+    query = config_all['search_params']['query']
 
     root = apiSearch(query, api_root_article)
     pmcids = retrievePmcids(root)
