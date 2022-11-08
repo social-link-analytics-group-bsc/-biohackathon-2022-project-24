@@ -7,3 +7,4 @@ urllib3==1.26.12
 bs4
 lxml
 tqdm
+nltk
