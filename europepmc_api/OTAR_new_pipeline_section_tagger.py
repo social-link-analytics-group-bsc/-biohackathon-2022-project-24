@@ -167,6 +167,7 @@ def process_each_file(filename, outfolder):
     count = 0
     #with open(outfolder + out_file + ".json", 'w') as fa:
     #    pass
+    xml_soup = None
     for each_file in tqdm(files_list):
         #print("count : " + str(count))
         try:
@@ -251,17 +252,12 @@ if __name__ == "__main__":
     parser.add_argument("-o", "--out", nargs=1, required=True, help="Output folder", metavar="PATH")
     
     args = parser.parse_args()
-    #print(args.out[0])
-    # parsing one file
-    # parsed_xml, output = process_each_file(args.file[0], args.out[0])
-    # json_file = retrieveSections(parsed_xml)
-    # with open(output+'.jsonl', 'w') as o:
-    #     json.dump(json_file, o)
-    # parsing a folder
+
     for file in glob.glob(args.file[0]+"*.xml"):
         parsed_xml, output = process_each_file(file, args.out[0])
         print(output)
-        json_file = retrieveSections(parsed_xml)
-        with open(args.out[0]+output+'.jsonl', 'w') as o:
-            json.dump(json_file, o)
+        if parsed_xml:
+            json_file = retrieveSections(parsed_xml)
+            with open(args.out[0]+output+'.jsonl', 'w') as o:
+                json.dump(json_file, o)
 
