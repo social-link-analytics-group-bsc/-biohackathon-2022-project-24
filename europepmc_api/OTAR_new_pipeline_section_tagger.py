@@ -242,6 +242,7 @@ if __name__ == "__main__":
     # json_file = retrieveSections(parsed_xml)
     # with open(output+'.jsonl', 'w') as o:
     #     json.dump(json_file, o)
+    # parsing a folder
     for file in glob.glob(args.file[0]+"*.xml"):
         parsed_xml, output = process_each_file(file, args.out[0])
         json_file = retrieveSections(parsed_xml)
