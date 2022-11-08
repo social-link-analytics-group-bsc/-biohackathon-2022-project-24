@@ -8,6 +8,7 @@ import random
 import sys, io, re, os
 import argparse
 import json
+import glob
 
 titleMapsBody = {
     'INTRO': ['introduction', 'background', 'related literature', 'literature review', 'objective', 'aim ', 'purpose of this study', 'study (purpose|aim|aims)', '(\d)+\. (purpose|aims|aim)', '(aims|aim|purpose) of the study', '(the|drug|systematic|book) review', 'review of literature', 'related work', 'recent advance'],
@@ -236,10 +237,14 @@ if __name__ == "__main__":
     
     args = parser.parse_args()
     #print(args.out[0])
-    parsed_xml, output = process_each_file(args.file[0], args.out[0])
-    #print(parsed_xml)
-    json_file = retrieveSections(parsed_xml)
-    print(type(json_file))
-    #print(args.file[0] + ": section tagging finished")
-    with open(output+'.jsonl', 'w') as o:
-        json.dump(json_file, o)
+    # parsing one file
+    # parsed_xml, output = process_each_file(args.file[0], args.out[0])
+    # json_file = retrieveSections(parsed_xml)
+    # with open(output+'.jsonl', 'w') as o:
+    #     json.dump(json_file, o)
+    for file in glob.glob(args.file[0]+"*.xml"):
+        parsed_xml, output = process_each_file(file, args.out[0])
+        json_file = retrieveSections(parsed_xml)
+        with open(output+'.jsonl', 'w') as o:
+            json.dump(json_file, o)
+
