@@ -25,6 +25,21 @@ Machine learning
 
 
 
+### Process 
+
+#### Data retrieval
+1. Getting a list of pmcids from a specific query done directly to the EuropePMC
+2. Using that list of pmcids to do a request and download the xml resource
+3. Parsing the xml file to build the different field
+4. Transforming the XML file into a JSON file
+5. Extracting the different field
+6. Extracting the relevant data
+7. Plugging that data to analysis
+
+#### Analysis
+
+
+
 ## Useful links
 
 * Biohackathon webpage: [https://biohackathon-europe.org/](https://biohackathon-europe.org/)
