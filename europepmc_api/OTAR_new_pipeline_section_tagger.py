@@ -7,6 +7,7 @@ from tqdm import tqdm
 import random
 import sys, io, re, os
 import argparse
+import json
 
 titleMapsBody = {
     'INTRO': ['introduction', 'background', 'related literature', 'literature review', 'objective', 'aim ', 'purpose of this study', 'study (purpose|aim|aims)', '(\d)+\. (purpose|aims|aim)', '(aims|aim|purpose) of the study', '(the|drug|systematic|book) review', 'review of literature', 'related work', 'recent advance'],
@@ -163,8 +164,8 @@ def process_each_file(filename, outfolder):
     out_file = os.path.splitext(os.path.basename(filename))[0]
     #print(out_file)
     count = 0
-    with open(outfolder + out_file + ".xml", 'w') as fa:
-        pass
+    #with open(outfolder + out_file + ".json", 'w') as fa:
+    #    pass
     for each_file in tqdm(files_list):
         #print("count : " + str(count))
         try:
@@ -180,16 +181,51 @@ def process_each_file(filename, outfolder):
             if xml_soup.find('orig_body'):
                 #print("orig_body found")
                 xml_soup.find('orig_body').name = 'body'
+                #print(xml_soup.find('body'))
             else:
                 continue
                 #print("orig BODY not found, WHYYYY")
             section_tag(xml_soup)
-            with open(outfolder + out_file + ".xml", 'a') as fa:
-                fa.write(str(xml_soup) + '\n')
+            #print(xml_soup)
+            #with open(outfolder + out_file + ".xml", 'a') as fa:
+            #    fa.write(str(xml_soup) + '\n')
         except Exception as e:
             print('error processing, parse error' + str(e))
             print(each_file)
             sys.exit(1)
+    return xml_soup, out_file
+
+def retrieveSections(root):
+    print(type(root))
+    dictSection = {
+    'INTRO': '',
+    'METHODS': '',
+    'RESULTS': '',
+    'DISCUSS': '',
+    'CONCL': '',
+    'CASE': '',
+    'ACK_FUND': '',
+    'AUTH_CONT': '',
+    'COMP_INT': '',
+    'ABBR': '',
+    'SUPPL': '',
+    'TABLE': '',
+    'KEYWORDS': '',
+    'ABSTRACT': ''}
+    for body in root:
+        if body.find('SecTag'):
+            sec = body.find('SecTag')['type']
+            #print(sec)
+            for child in body.find_all('SecTag'):
+                #print(child['type'])
+                #print(child.text)
+                for section in dictSection.keys():  # For each section in dictSection
+                    if section in child['type']:
+                        #print(section)
+                        dictSection[section] = ''.join(child.text).replace(
+                                                        '"', "'")
+    print(dictSection['METHODS'])
+    return dictSection
 
 
 if __name__ == "__main__":
@@ -200,5 +236,10 @@ if __name__ == "__main__":
     
     args = parser.parse_args()
     #print(args.out[0])
-    process_each_file(args.file[0], args.out[0])
-    print(args.file[0] + ": section tagging finished")
+    parsed_xml, output = process_each_file(args.file[0], args.out[0])
+    #print(parsed_xml)
+    json_file = retrieveSections(parsed_xml)
+    print(type(json_file))
+    #print(args.file[0] + ": section tagging finished")
+    with open(output+'.jsonl', 'w') as o:
+        json.dump(json_file, o)
