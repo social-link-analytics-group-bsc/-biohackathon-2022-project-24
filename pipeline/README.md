@@ -1,6 +1,6 @@
 # pipeline
 
-## Download EuropePMC sample from list of pmcids
+## Download EuropePMC samples from list of pmcids
 
 ```
 python -m venv venv
