@@ -11,7 +11,7 @@ python -m pip install -r requirements.txt
 To download the sample data and transform to json:
 ```
 python use_api.py 
-python europepmc_api/OTAR_new_pipeline_section_tagger.py -f pipeline/data/articles/ -o pipeline/data/clean_articles/
+python section_tagger.py -f data/articles/ -o data/clean_articles/
 ```
 
 Currently the sample comes from the query "eLIfe AND ((HAS_FT:Y AND OPEN_ACCESS:Y)) AND (((SRC:MED OR SRC:PMC OR SRC:AGR OR SRC:CBA) NOT (PUB_TYPE:"Review")))"
