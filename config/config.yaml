@@ -14,5 +14,5 @@ api_europepmc_params:
 
 search_params:
   ids_file_location: ./data/europepmc_id.txt
-  accepted_species: [human, Homo Sapiens]
-  query:  HAS_FT:Y AND OPEN_ACCESS:Y AND TITLE:aspirin 
+  accepted_species: [human, Homo Sapies]
+  query:  eLIfe AND (HAS_FT:Y AND OPEN_ACCESS:Y )
