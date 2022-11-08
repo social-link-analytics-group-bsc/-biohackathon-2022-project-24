@@ -5,7 +5,7 @@ import glob
 def main():
     count_articles = 0
     count_keyresource = 0
-    for file in glob.glob("pipeline/data/clean_articles/"+"*.jsonl"):
+    for file in glob.glob("data/clean_articles/"+"*.jsonl"):
         with open(file, 'r') as o:
             data = json.load(o)
         count_articles += 1

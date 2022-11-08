@@ -20,3 +20,24 @@ If you want to explore different sets of data go to: https://europepmc.org/
 * Do your query
 * Download the ids in "Export citations" and save the result in data/
 * Indicate the new file in the config "ids_file_location"
+
+## Explore the sections
+
+### Tables
+
+Explore all the tables in the jsons by running:
+```
+python explore_tables.py
+```
+
+To find the occurrences of a particular word (e.g. "female"):
+```
+python explore_tables.py | grep "female" | wc -l
+```
+
+### Methods
+
+Find the sentences containing the tokens ['man', 'woman', 'male', 'female', 'men', 'women', 'males', 'females'] with a number before it:
+```
+python explore_methods.py
+```
