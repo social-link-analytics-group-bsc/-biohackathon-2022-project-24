@@ -197,7 +197,7 @@ def process_each_file(filename, outfolder):
     return xml_soup, out_file
 
 def retrieveSections(root):
-    print(type(root))
+    #print(type(root))
     dictSection = {
     'INTRO': '',
     'METHODS': '',
@@ -210,7 +210,7 @@ def retrieveSections(root):
     'COMP_INT': '',
     'ABBR': '',
     'SUPPL': '',
-    'TABLE': '',
+    'TABLE': {},
     'KEYWORDS': '',
     'ABSTRACT': ''}
     for body in root:
@@ -222,10 +222,25 @@ def retrieveSections(root):
                 #print(child.text)
                 for section in dictSection.keys():  # For each section in dictSection
                     if section in child['type']:
-                        #print(section)
-                        dictSection[section] = ''.join(child.text).replace(
+                        if section == 'TABLE':
+                            #print(child)
+                            table_id = child.find('table-wrap')['id']
+                            # table = child.find('table-wrap')
+                            table_list = []
+                            for row in child.find_all('tr'):
+                                if row.find('th'):
+                                    keys = [i.text for i in row.find_all('th')]
+                                    #print(keys)
+                                    table_list.append(keys)
+                                if row.find('td'):
+                                    values = [i.text for i in row.find_all('td')]
+                                    #print(values)
+                                    table_list.append(values)
+                            dictSection[section][table_id] = table_list
+                        else:
+                            dictSection[section] = ''.join(child.text).replace(
                                                         '"', "'")
-    print(dictSection['METHODS'])
+    print(dictSection['TABLE'])
     return dictSection
 
 
