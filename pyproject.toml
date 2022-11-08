@@ -15,6 +15,8 @@ pandas = "^1.5.1"
 matplotlib = "^3.6.2"
 seaborn = "^0.12.1"
 missingno = "^0.5.1"
+lxml = "^4.9.1"
+tqdm = "^4.64.1"
 
 
 [build-system]

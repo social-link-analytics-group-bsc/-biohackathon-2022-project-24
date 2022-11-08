@@ -1,3 +1,4 @@
+from pathlib import Path
 import requests
 from requests.exceptions import HTTPError
 
@@ -7,9 +8,11 @@ import os
 import yaml
 import sys
 
-sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
-from db_utils import db_utils
+import pathlib
 
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
+
+from db_utils import db_utils
 logger = logging.getLogger(__name__)
 
 
@@ -91,17 +94,18 @@ def apiSearch(pmcid, root_url):
     return root
 
 # load pmcid from csv file
+
+
 def getPMCidList(file_location):
-  with open(file_location, 'r') as f:
-    for l in f:
-      l_split = l.split(',')
-      if len(l_split) > 1:
-        field = l_split[1]
-      else:
-        field = l_split[0]
-      pmcid = field.split(':')[1]
-      yield pmcid.rstrip()
-    
+    with open(file_location, 'r') as f:
+        for l in f:
+            l_split = l.split(',')
+            if len(l_split) > 1:
+                field = l_split[1]
+            else:
+                field = l_split[0]
+            pmcid = field.split(':')[1]
+            yield pmcid.rstrip()
 
 
 def main():
@@ -110,9 +114,10 @@ def main():
     file_root_archive = config_all['api_europepmc_params']['archive_file']
     rerun_archive = config_all['api_europepmc_params']['rerun_archive']
     file_location = config_all['ids_file_location']
-    #if rerun_archive is True:
-     #   db_utils.drop_database()
-    #db_utils.create_database()
+    article_folder = config_all['api_europepmc_params']['article_folder']
+    # if rerun_archive is True:
+    #   db_utils.drop_database()
+    # db_utils.create_database()
 
     # Get the present pcmid in case rerun=false to avoir re-dl everything
     # already_dl_pcmid = [i for i in db_utils.retrieve_existing_record()]
@@ -120,7 +125,16 @@ def main():
     dummyCounter = 0
     # archive = get_archive(file_root_archive, api_root_archive, rerun_archive)
 
-    for pmcid in getPMCidList(file_location):
+    pmcid_to_dl = list(getPMCidList(file_location))
+    print(f"Len of pmcid_to_dl: {len(pmcid_to_dl)}")
+    already_dl_pmcid = list()
+
+    already_dl_pmcid = [x.stem for x in pathlib.Path(article_folder).glob("*.xml")]
+
+    list_pmcid = [pmcid for pmcid in pmcid_to_dl if pmcid not in already_dl_pmcid]
+
+    print(f"Len list_pmcid: {len(list_pmcid)}")
+    for pmcid in list_pmcid:
         print(pmcid)
         dummyCounter += 1
         article = apiSearch(pmcid, api_root_article)
