@@ -53,9 +53,6 @@ def get_archive(file_location, url, rerun=False):
         n = 0
         for OAFile in OAFiles:
             yield str(OAFile[:-1], 'utf-8')
-            n += 1
-            if n == 100000:
-                return
 
 
 def getting_pmcids(query, root_url):
@@ -83,10 +80,23 @@ def retrievePmcids(root):
 
 def main():
     api_root_article = config_all['api_europepmc_params']['rest_articles']['root_url']
-    file_name = config_all['search_params']['ids_file_location']
+    ids_query_location = config_all['search_params']['ids_query_location']
+    dl_archive = config_all['search_params']['dl_archive']
+    rerun_archive = config_all['search_params']['rerun_archive']
+    ids_archive_location = config_all['search_params']['ids_archive_location']
+    archive_url = config_all['api_europepmc_params']['archive_api']['root_url']
+    archive_filelocation = config_all['api_europepmc_params']['archive_file']
     query = config_all['search_params']['query']
-    with open(file_name, 'w') as f:
-        for pmcid in getting_pmcids(query, api_root_article):
+    if dl_archive is True:
+        print('Downloading archive')
+        list_pcmids = get_archive(archive_filelocation, archive_url, rerun_archive)
+        filename = ids_archive_location
+
+    else:
+        list_pcmids = getting_pmcids(query, api_root_article)
+        filename = ids_query_location
+    with open(filename, 'w') as f:
+        for pmcid in list_pcmids:
             print(pmcid)
             f.write(pmcid)
             f.write('\n')

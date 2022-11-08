@@ -8,11 +8,14 @@ api_europepmc_params:
   archive_api:
     root_url: https://europepmc.org/ftp/oa/pmcid.txt.gz
   archive_file: ./data/pmcid.txt.gz
-  rerun_archive: false
-  article_folder: ./data/clean_articles/
+  article_query_folder: ./data/query_articles/
+  article_archive_folder: ./data/archive_articles/
 
 
 search_params:
-  ids_file_location: ./data/europepmc_id.txt
+  ids_query_location: ./data/europepmc_id.txt
+  ids_archive_location: ./data/archives_ids.txt
   accepted_species: [human, Homo Sapies]
+  dl_archive: true
+  rerun_archive: false
   query:  eLIfe AND (HAS_FT:Y AND OPEN_ACCESS:Y )

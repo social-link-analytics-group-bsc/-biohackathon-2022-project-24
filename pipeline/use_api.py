@@ -86,9 +86,24 @@ def recording_pmcid(pmcid, annotation_api, accepted_species, api_root_article):
 def main():
     api_root_article = config_all['api_europepmc_params']['rest_articles']['root_url']
     annotation_api = config_all['api_europepmc_params']['annotations_api']['root_url']
-    file_location = config_all['search_params']['ids_file_location']
-    article_folder = config_all['api_europepmc_params']['article_folder']
+
+    ids_query_location = config_all['search_params']['ids_query_location']
+    article_query_folder = config_all['api_europepmc_params']['article_query_folder']
+
+    dl_archive = config_all['search_params']['dl_archive']
+    rerun_archive = config_all['search_params']['rerun_archive']
+    ids_archive_location = config_all['search_params']['ids_archive_location']
+    article_archive_folder = config_all['api_europepmc_params']['article_archive_folder']
+
     accepted_species = config_all['search_params']['accepted_species']
+
+    if dl_archive is True:
+        file_location = ids_archive_location
+        article_folder = article_archive_folder
+    else:
+        file_location = ids_query_location
+        article_folder = article_query_folder
+
     pmcid_to_dl = list(getPMCidList(file_location))
     print(f"Len of pmcid_to_dl: {len(pmcid_to_dl)}")
     already_dl_pmcid = list()
