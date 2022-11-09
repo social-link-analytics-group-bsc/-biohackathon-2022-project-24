@@ -10,20 +10,16 @@ def find_candidate_sentences(text, relevant_tokens):
     sentences = sent_tokenize((text))
     interest_sentences = []
     for sent in sentences:
-        num = False
-        interest = False
-        mice = False
+        candidate = False
+        window = 3
         tokenized = word_tokenize(sent)
-        for token in tokenized: # TODO: give a window before and after the number to find the interesting tokens
-            # print(token)
-            if token.isnumeric():
-                num = True
-            if token.lower() in relevant_tokens and num:
-                interest = True
-                num = False
-            if token == 'mice':
-                mice = True
-        if num and interest and not mice and len(sent) < 300:
+        for i,token in enumerate(tokenized):
+            if token.lower() in relevant_tokens:
+                check_tokens = tokenized[i-window:i+window]
+                for t in check_tokens:
+                    if t.isnumeric():
+                        candidate = True
+        if candidate and len(sent) < 300:
             interest_sentences.append(sent)
     return interest_sentences
 
@@ -31,6 +27,7 @@ def main():
 
     count_articles = 0
     interesting_tokens = ['man', 'woman', 'male', 'female', 'men', 'women', 'males', 'females']
+    open('data/candidate_sentences.csv', 'w')
 
     for file in glob.glob("data/clean_articles/"+"*.jsonl"):
         print(file)
@@ -40,6 +37,7 @@ def main():
 
         #text = data['METHODS']
         sentences = find_candidate_sentences(data['METHODS'], interesting_tokens)
+
         with open('data/candidate_sentences.csv', 'a') as o:
             for sentence in sentences:
                 write = csv.writer(o)
