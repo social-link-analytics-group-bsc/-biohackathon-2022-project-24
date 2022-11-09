@@ -241,7 +241,7 @@ def retrieveSections(root):
                                     table_list.append(values)
                             dictSection[section][table_id] = table_list
                         else:
-                            dictSection[section] = ''.join(child.text).replace(
+                            dictSection[section] = ' '.join(child.text).replace(
                                                         '"', "'")
     print(dictSection['TABLE'])
     return dictSection
