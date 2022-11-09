@@ -15,7 +15,13 @@ def find_candidate_sentences(text, relevant_tokens):
         tokenized = word_tokenize(sent)
         for i,token in enumerate(tokenized):
             if token.lower() in relevant_tokens:
-                check_tokens = tokenized[i-window:i+window]
+                try:
+                    check_tokens = tokenized[i-window:i+window]
+                except IndexError:
+                    try:
+                        check_tokens = tokenized[i-1:i+1]
+                    except IndexError:
+                        continue
                 for t in check_tokens:
                     if t.isnumeric():
                         candidate = True
