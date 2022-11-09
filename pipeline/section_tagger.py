@@ -72,7 +72,7 @@ def titleExactMatch(title):
     return None
 
 
-#add SecTag with appropriate title
+# add SecTag with appropriate title
 def section_tag(soup):
     # Add Figure section
     for fig in soup.find_all(['fig'], recursive=True):
@@ -101,30 +101,25 @@ def section_tag(soup):
     # get sec tags from body
     # find sec tag and their titles, as sectag type using a dictionary mapping
     secFlag = 'body'
-    #print(secFlag)
     if soup.body:
-        for sec in soup.body.find_all('sec', recursive=False):
+        # print(soup.body)
+        for sec in soup.body.find_all('sec'):
             if sec.title:
-                #print(sec.title.text)
                 mappedTitle = titleExactMatch(sec.title.text)
                 if mappedTitle is None:
                     mappedTitle = titlePartialMatch(sec.title.text, secFlag)
-                #print(mappedTitle)
                 if mappedTitle:
                     secBody = createSecTag(soup, mappedTitle)
                     sec.wrap(secBody)
-    
+
     # get back sections
     # find sec tag and their titles, as sectag type using a dictionary mapping
     secFlag = 'back'
-    #print(secFlag)
     if soup.back:
         # apply the title mapping to sec and the special cases, like app-group, ack, ref-list
         for sec in soup.back.find_all(['sec', 'ref-list', 'app-group', 'ack', 'glossary', 'notes', 'fn-group'], recursive=False):
             if sec.title:
-                #print(sec.title.text)
                 mappedTitle = titlePartialMatch(sec.title.text, secFlag)
-                #print(mappedTitle)
                 if mappedTitle:
                     secBack = createSecTag(soup, mappedTitle)
                     sec.wrap(secBack)
@@ -132,7 +127,7 @@ def section_tag(soup):
                 if sec.name=='ref-list':
                     secRef = createSecTag(soup, 'REF')
                     sec.wrap(secRef)
-
+    return soup
 
 def getfileblocks(file_path):
     sub_file_blocks = []
@@ -146,7 +141,6 @@ def getfileblocks(file_path):
                 else:
                     sub_file_blocks[-1] += line.strip().replace('</articles>$', '') 
     except:
-        #print('error processing, skipping file : ' + file_path)
         with io.open(file_path, 'r', encoding='ISO-8859-1') as fh:
             for line in fh:
                 if line.startswith(start_str1) or line.startswith(start_str2):
@@ -157,22 +151,13 @@ def getfileblocks(file_path):
 
 
 def process_each_file(filename, outfolder):
-    #print('Process Each File')
-    #print(filename)
-    #print(outfolder)
     files_list = getfileblocks(filename)
-    #print("Files _list size : " + str(len(files_list)))
     out_file = os.path.splitext(os.path.basename(filename))[0]
-    #print(out_file)
     count = 0
-    #with open(outfolder + out_file + ".json", 'w') as fa:
-    #    pass
     xml_soup = None
-    for each_file in tqdm(files_list):
-        #print("count : " + str(count))
+    for each_file in files_list:
         try:
             count = count + 1
-            #print('\n\n\n')
             each_file = each_file.replace('<body>', '<orig_body>')
             each_file = each_file.replace('<body ', '<orig_body ')
             each_file = each_file.replace('</body>', '</orig_body>')
@@ -181,24 +166,17 @@ def process_each_file(filename, outfolder):
             xml_soup.html.unwrap()
             xml_soup.body.unwrap()
             if xml_soup.find('orig_body'):
-                #print("orig_body found")
                 xml_soup.find('orig_body').name = 'body'
-                #print(xml_soup.find('body'))
             else:
                 continue
-                #print("orig BODY not found, WHYYYY")
             section_tag(xml_soup)
-            #print(xml_soup)
-            #with open(outfolder + out_file + ".xml", 'a') as fa:
-            #    fa.write(str(xml_soup) + '\n')
         except Exception as e:
             print('error processing, parse error' + str(e))
             print(each_file)
             sys.exit(1)
     return xml_soup, out_file
 
-def retrieveSections(root):
-    #print(type(root))
+def retrieveSections(body):
     dictSection = {
     'INTRO': '',
     'METHODS': '',
@@ -216,34 +194,28 @@ def retrieveSections(root):
     'ABSTRACT': '',
     'REF': '',
     'APPENDIX': ''}
-    for body in root:
-        if body.find('SecTag'):
-            #sec = body.find('SecTag')['type']
-            #print(sec)
-            for child in body.find_all('SecTag'):
-                #print(child['type'])
-                #print(child.text)
-                for section in dictSection.keys():  # For each section in dictSection
-                    if section in child['type']:
-                        if section == 'TABLE':
-                            #print(child)
-                            table_id = child.find('table-wrap')['id']
-                            # table = child.find('table-wrap')
-                            table_list = []
-                            for row in child.find_all('tr'):
-                                if row.find('th'):
-                                    keys = [i.text for i in row.find_all('th')]
-                                    #print(keys)
-                                    table_list.append(keys)
-                                if row.find('td'):
-                                    values = [i.text for i in row.find_all('td')]
-                                    #print(values)
-                                    table_list.append(values)
-                            dictSection[section][table_id] = table_list
-                        else:
-                            dictSection[section] = ''.join(child.text).replace(
-                                                        '"', "'")
-    print(dictSection['TABLE'])
+    if body.find('SecTag'):
+        for child in body.find_all('SecTag'):
+            for section in dictSection.keys():  # For each section in dictSection
+                if section in child['type']:
+                    if section == 'TABLE':
+                        #print(child)
+                        table_id = child.find('table-wrap')['id']
+                        # table = child.find('table-wrap')
+                        table_list = []
+                        for row in child.find_all('tr'):
+                            if row.find('th'):
+                                keys = [i.text for i in row.find_all('th')]
+                                #print(keys)
+                                table_list.append(keys)
+                            if row.find('td'):
+                                values = [i.text for i in row.find_all('td')]
+                                #print(values)
+                                table_list.append(values)
+                        dictSection[section][table_id] = table_list
+                    else:
+                        dictSection[section] = ''.join(child.text).replace(
+                                                    '"', "'")
     return dictSection
 
 
@@ -255,9 +227,8 @@ if __name__ == "__main__":
     
     args = parser.parse_args()
 
-    for file in glob.glob(args.file[0]+"*.xml"):
+    for file in tqdm(glob.glob(args.file[0]+"*.xml")):
         parsed_xml, output = process_each_file(file, args.out[0])
-        print(output)
         if parsed_xml:
             json_file = retrieveSections(parsed_xml)
             with open(args.out[0]+output+'.jsonl', 'w') as o:

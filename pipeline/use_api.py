@@ -1,15 +1,21 @@
 import requests
 from requests.exceptions import HTTPError
+import concurrent.futures
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
-import xml.etree.ElementTree as ET
+
+from section_tagger import section_tag, retrieveSections
+
+
 import logging
 import os
+import json
 import yaml
 from tqdm import tqdm
 import pathlib
 import urllib.parse
-from urllib.parse import quote
 
+from bs4 import BeautifulSoup
 
 logger = logging.getLogger(__name__)
 
@@ -37,14 +43,18 @@ def apiSearch(pmcid, root_url):
     r = requests.get(req)
     if not r:
         return
-    root = ET.fromstring(r.content)
-    if not root.findall('body'):
-        return
-    return root
+    soup = BeautifulSoup(r.content, 'lxml')
+
+    # root = ET.fromstring(r.content)
+    # try:
+    #     if not root.findall('body'):
+    #         return
+    # except TypeError:
+    #     raise BaseException(f'No body: {r.content}')
+    return soup
 
 
 def get_species(pmcid, annotation_url, accepted_species):
-
     url = annotation_url
     pmcid = f'PMC:{pmcid[3:]}'
     payload = {'articleIds': pmcid,
@@ -72,15 +82,23 @@ def getPMCidList(file_location):
             yield l.rstrip()
 
 
-def recording_pmcid(pmcid, annotation_api, accepted_species, api_root_article):
-    n = 0
+def tag_xml(soup):
+    return section_tag(soup)
+
+
+def recording_pmcid(pmcid, annotation_api, accepted_species, api_root_article, article_folder):
     if get_species(pmcid, annotation_api, accepted_species):
+        # if True:
         article = apiSearch(pmcid, api_root_article)
-        tree = ET.ElementTree(article)
-        with open('data/articles/'+pmcid+'.xml', 'wb') as f:
-            tree.write(f)
-            n += 1
-    return n
+
+        filename = article_folder + pmcid + '.xml'
+        parsed_xml = tag_xml(article)
+        if parsed_xml:
+            filename_json = article_folder + pmcid + '.jsonl'
+            json_file = retrieveSections(parsed_xml)
+            with open(filename_json, 'w') as o:
+                json.dump(json_file, o)
+            return True
 
 
 def main():
@@ -115,10 +133,32 @@ def main():
         pmcid for pmcid in pmcid_to_dl if pmcid not in already_dl_pmcid]
 
     print(f"Len list_pmcid: {len(list_pmcid)}")
-    for pmcid in tqdm(list_pmcid):
-        n = recording_pmcid(pmcid, annotation_api,
-                            accepted_species, api_root_article)
-    print(f"Recorded {n} articles from the total of {len(list_pmcid)}")
+    # for pmcid in tqdm(list_pmcid):
+    #     recording_pmcid(pmcid, annotation_api, accepted_species,
+    #                     api_root_article, article_folder)
+    with tqdm(total=len(list_pmcid)) as progress:
+        futures = []
+        with concurrent.futures.ProcessPoolExecutor() as ppe:
+            total_recorded = 0
+            for pmcid in list_pmcid:
+                future = ppe.submit(recording_pmcid, pmcid, annotation_api,
+                                    accepted_species, api_root_article, article_folder)
+
+                future.add_done_callback(lambda p: progress.update())
+                futures.append(future)
+                # # get the result from the task
+                exception = future.exception()
+                # handle exceptional case
+                if exception:
+                    raise(exception)
+
+                else:
+                    if future.result() is True:
+                        total_recorded += 1
+                        print(
+                            f'Total recorded articles: {total_recorded}')
+
+    print(f"Recorded {total_recorded} articles from the total of {len(list_pmcid)}")
 
 
 if __name__ == "__main__":
