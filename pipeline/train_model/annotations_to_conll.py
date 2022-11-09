@@ -32,8 +32,12 @@ def main():
             position_m = find_number(tokenized, line[3])
             for i, token in enumerate(tokenized):
                 if i == position_f:
+                    if line[4] == 'TRUE':
+                        writer.writerow([token, 'F-PER'])
                     writer.writerow([token, 'F-NUM'])
                 elif i == position_m:
+                    if line[4] == 'TRUE':
+                        writer.writerow([token, 'M-PER'])
                     writer.writerow([token, 'M-NUM'])
                 else:
                     writer.writerow([token, 'O'])
