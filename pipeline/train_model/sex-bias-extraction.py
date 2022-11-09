@@ -50,6 +50,8 @@ class SBE(datasets.GeneratorBasedBuilder):
                             names=[
                                 "F-NUM",
                                 "M-NUM",
+                                "F-PER",
+                                "M-PER",
                                 "O"
                             ]
                         )
