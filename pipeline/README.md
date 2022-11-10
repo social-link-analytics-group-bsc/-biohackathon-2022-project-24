@@ -41,3 +41,17 @@ Find the sentences containing the tokens ['man', 'woman', 'male', 'female', 'men
 ```
 python explore_methods.py
 ```
+
+## get articles info
+
+1. metadata given a csv containing list of pmcids and directory containing xml of the articles
+
+```
+python more_filtering.py -f data/ids-10.csv -d data/articles/        
+```
+
+2. add annotations info about `Organisms` annotated in the articles 
+
+```
+python add_annotation_info.py -f data/ids-10.csv  -a Organisms
+```
