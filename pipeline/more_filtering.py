@@ -115,7 +115,7 @@ if __name__ == "__main__":
     print(df_new)
 
     if args.annotation:
-        df = pd.merge(df_ann, df_new, how='inner', on = 'PMCID')
+        df = pd.merge(df_new, df_ann, how='inner', on = 'PMCID')
         df.to_csv("new_data.csv")
     else:
         df_new.to_csv("new_data.csv")
