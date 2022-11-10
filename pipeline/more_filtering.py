@@ -79,12 +79,11 @@ if __name__ == "__main__":
     parser.add_argument("-a", "--annotation", action='store_true', help="Directory in which xml files are stored")
     
     annotation_api = config_all['api_europepmc_params']['annotations_api']['root_url']
-    params = {'type':'Diseases'}
+    params = {'type':'Organisms'}
 
     args = parser.parse_args()
     file = args.file[0]
     directory = args.directory[0]
-    #annotation = args.annotation[0]
 
     df = pd.read_csv(file)
     dic_of_dicts = []
@@ -102,8 +101,10 @@ if __name__ == "__main__":
 
         if args.annotation:
             annotations = retrieveAnnotations(id, annotation_api, params)
-            print(annotations)
-            dic_of_dicts.append(annotations)
+        annotations.update(idx._asdict())
+        annotations.pop("Index")
+        print(annotations)
+        dic_of_dicts.append(annotations)
 
     df_new = pd.DataFrame(dic_of_dicts)
     print(df_new)
