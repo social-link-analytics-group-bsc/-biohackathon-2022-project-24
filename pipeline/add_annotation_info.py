@@ -71,14 +71,6 @@ def retrieveAnnotations(pmcid, annotation_api_url, params):
 
     return annot_dict
 
-def retrieveAllAnnotations(pmcid, annotation_api_url, params_list):
-    
-    df = pd.DataFrame()
-    for params in params_list:
-        df_1 = pd.DataFrame(retrieveAnnotations(pmcid, annotation_api_url, params))
-        df = pd.merge(df_1, df, how='inner', on = 'PMCID')
-
-    return df.to_dict()
 
 
 if __name__ == "__main__":
@@ -101,9 +93,7 @@ if __name__ == "__main__":
     annots = []
 
     for idx in df.itertuples():
-        id =idx.PMCID
-
-        annotations = retrieveAnnotations(id, annotation_api, params)
+        annotations = retrieveAnnotations(idx.PMCID, annotation_api, params)
         annots.append(annotations)
 
 
@@ -111,5 +101,5 @@ if __name__ == "__main__":
 
     print(df_ann)
 
-    result = df = pd.merge(df, df_ann.reset_index(drop=True), on="PMCID", how="left")
+    result = pd.merge(df.reset_index(drop=True), df_ann.reset_index(drop=True), on="PMCID", how="left")
     result.to_csv("new_data_with_annotations.csv", index=False)
