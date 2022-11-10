@@ -104,9 +104,6 @@ if __name__ == "__main__":
         id =idx.PMCID
 
         annotations = retrieveAnnotations(id, annotation_api, params)
-        annotations.update(idx._asdict())
-        annotations.pop("Index")
-        print(annotations)
         annots.append(annotations)
 
 
@@ -114,5 +111,5 @@ if __name__ == "__main__":
 
     print(df_ann)
 
-    df = pd.merge(df, df_ann, how='inner', on = 'PMCID')
-    df.to_csv("new_data_with_annotations.csv")
+    result = df = pd.merge(df, df_ann, on="PMCID", how="left")
+    result.to_csv("new_data_with_annotations.csv", index=False)
