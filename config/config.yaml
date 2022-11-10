@@ -10,6 +10,7 @@ api_europepmc_params:
   archive_file: ./data/pmcid.txt.gz
   article_query_folder: ./data/query_articles/
   article_archive_folder: ./data/archive_articles/
+  list_parsed_ids_location: ./data/list_parsed_ids.txt
 
 
 search_params:
@@ -19,3 +20,7 @@ search_params:
   dl_archive: true
   rerun_archive: false
   query:  eLIfe AND (HAS_FT:Y AND OPEN_ACCESS:Y )
+
+processing_params:
+  candidate_sentence_location: ./data/candidate_sentences.csv
+
