@@ -59,14 +59,17 @@ def get_species(pmcid, annotation_url, accepted_species):
 
     params = urllib.parse.urlencode(payload, quote_via=urllib.parse.quote)
     result = get_request(url, params)
-    result_json = result.json()
-    species = None
-    for dictionary in result_json:
-        for d in dictionary['annotations']:
-            species = d['exact']
-            break
-    if species in accepted_species:
-        return pmcid
+    try:
+        result_json = result.json()
+        species = None
+        for dictionary in result_json:
+            for d in dictionary['annotations']:
+                species = d['exact']
+                break
+        if species in accepted_species:
+            return pmcid
+    except AttributeError:  # When not getting anything
+        pass
 
 
 def getPMCidList(file_location):
@@ -84,13 +87,20 @@ def recording_pmcid(pmcid, annotation_api, accepted_species, api_root_article, a
         # if True:
         article = apiSearch(pmcid, api_root_article)
 
-        filename = article_folder + pmcid + '.xml'
-        parsed_xml = tag_xml(article)
-        if parsed_xml:
-            filename_json = article_folder + pmcid + '.jsonl'
-            json_file = retrieveSections(parsed_xml)
-            with open(filename_json, 'w') as o:
-                json.dump(json_file, o)
+        filename_xml = article_folder + pmcid + '.xml'
+        try:
+            with open(filename_xml, 'w') as f:
+                f.write(article.prettify())
+            parsed_xml = tag_xml(article)
+            if parsed_xml:
+                filename_json = article_folder + pmcid + '.jsonl'
+                json_file = retrieveSections(parsed_xml)
+                with open(filename_json, 'w') as o:
+                    json.dump(json_file, o)
+        except AttributeError:
+            pass
+
+
     return pmcid
 
 
@@ -116,33 +126,43 @@ def main():
         file_location = ids_query_location
         article_folder = article_query_folder
 
-    pmcid_to_dl = list(getPMCidList(file_location))
+    pmcid_to_dl = set(getPMCidList(file_location))
     print(f"Len of pmcid_to_dl: {len(pmcid_to_dl)}")
-    already_dl_pmcid = list()
+    # already_dl_pmcid = list()
 
     list_parsed_ids = list()
     try:
         with open(list_parsed_ids_location, 'r') as f:
             for l in f:
-                list_parsed_ids.append(l)
-
+                list_parsed_ids.append(l.rstrip())
     except FileNotFoundError:
         pass
     # already_dl_pmcid = [x.stem for x in pathlib.Path(
     #     article_folder).glob("*.xml")]
 
-    list_pmcid = [
-        pmcid for pmcid in pmcid_to_dl if pmcid not in list_parsed_ids]
+    # list_pmcid = [
+    #     pmcid for pmcid in pmcid_to_dl if pmcid not in list_parsed_ids]
 
-    print(f"Len list_pmcid: {len(list_pmcid)}")
+    list_parsed_ids = set(list_parsed_ids)
+    ids_to_dl = list(pmcid_to_dl.difference(list_parsed_ids))
+
+    # n = 0
+    # for pmcid in list(pmcid_to_dl):
+    #     if pmcid in list_parsed_ids:
+    #         pmcid_to_dl.remove(pmcid)
+    #     n+=1
+    #     print(f'Done {n} ids, size pcm_to_dl: {len(pmcid_to_dl)}')
+
+
+    print(f"Len list_pmcid: {len(ids_to_dl)}")
     # for pmcid in tqdm(list_pmcid):
     #     recording_pmcid(pmcid, annotation_api, accepted_species,
     #                     api_root_article, article_folder)
-    with tqdm(total=len(list_pmcid)) as progress:
+    with tqdm(total=len(ids_to_dl)) as progress:
         futures = []
         with concurrent.futures.ProcessPoolExecutor(max_workers=10) as ppe:
             total_recorded = 0
-            for pmcid in list_pmcid:
+            for pmcid in ids_to_dl:
                 future = ppe.submit(recording_pmcid, pmcid, annotation_api,
                                     accepted_species, api_root_article, article_folder)
 
@@ -160,7 +180,7 @@ def main():
                         with open(list_parsed_ids_location, 'a') as f:
                             f.write(result)
                             f.write('\n')
-                        list_parsed_ids.append(result)
+                        # list_parsed_ids.append(result)
                         # total_recorded += 1
                         # print(
                         #     f'Total recorded articles: {total_recorded}')

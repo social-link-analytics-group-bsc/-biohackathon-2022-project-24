@@ -10,7 +10,7 @@ api_europepmc_params:
   archive_file: ./data/pmcid.txt.gz
   article_query_folder: ./data/query_articles/
   article_archive_folder: ./data/archive_articles/
-  list_parsed_ids_location: ./data/list_parsed_ids_location.txt
+  list_parsed_ids_location: ./data/list_parsed_ids.txt
 
 
 search_params:
