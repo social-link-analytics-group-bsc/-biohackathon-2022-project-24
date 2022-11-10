@@ -111,5 +111,5 @@ if __name__ == "__main__":
 
     print(df_ann)
 
-    result = df = pd.merge(df, df_ann, on="PMCID", how="left")
+    result = df = pd.merge(df, df_ann.reset_index(drop=True), on="PMCID", how="left")
     result.to_csv("new_data_with_annotations.csv", index=False)
