@@ -50,8 +50,25 @@ python explore_methods.py
 python more_filtering.py -f data/ids-10.csv -d data/articles/        
 ```
 
-2. add annotations info about `Organisms` annotated in the articles 
+2. add info about entities (e.g., `Organisms`) annotated in the articles 
 
 ```
 python add_annotation_info.py -f data/ids-10.csv  -a Organisms
+
+python add_annotation_info.py -f data/ids-10.csv  -a D
 ```
+
+List of entities : 
+
+```
+* Organisms
+* Diseases
+* Accessions
+* Genes/Proteins
+* Chemicals
+* Gene Ontology
+* Resources
+* Experimental Methods
+* [and more else...](https://europepmc.org/AnnotationsApi#/)
+```
+
