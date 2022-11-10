@@ -6,10 +6,6 @@ RESULTS = "results.json"
 
 python explore_methods.py --data_path $XML_DATA_PATH --out $SENTENCES
 
-# TODO: more filtering script here
-
 python get_sex_bias.py --data $SENTENCES --out $RESULTS --model $MODEL
-
-# TODO: analysis scripts here
 
 

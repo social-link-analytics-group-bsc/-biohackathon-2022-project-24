@@ -9,6 +9,7 @@ import os
 import pathlib
 import pandas as pd
 from tqdm import tqdm
+import argparse
 
 
 def find_candidate_sentences(text, relevant_tokens, get_null_sentences=False):
@@ -33,15 +34,26 @@ def find_candidate_sentences(text, relevant_tokens, get_null_sentences=False):
 
     return interest_sentences
 
+def parsing_arguments(parser):
+    parser.add_argument("--data_path", type=str, default="data/archive_articles/",
+                        help='Tasks to evaluate')
+    parser.add_argument("--out", type=str, default='data/candidate_sentences.csv',
+                        help='Tasks to evaluate')
+    return parser
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser = parsing_arguments(parser)
+    args = parser.parse_args()
+    print(args)
+
     count_articles = 0
     interesting_tokens = ['man', 'woman', 'male', 'female', 'men', 'women', 'males', 'females']
     header = ["PMCID", "tokenized_METHODS", "keywords"]
 
-    open('data/candidate_sentences.csv', 'w')
+    open(args.out, 'w')
 
-    for file in tqdm(pathlib.Path("data/archive_articles/").glob("*.jsonl")):
+    for file in tqdm(pathlib.Path(args.data_path).glob("*.jsonl")):
         pmcid = file.stem
 
 
@@ -62,7 +74,7 @@ def main():
         sentences = find_candidate_sentences(data["METHODS"], interesting_tokens, get_null_sentences=True)
         if sentences:
 
-            with open('data/candidate_sentences_last.csv', 'a') as o:
+            with open(args.out, 'a') as o:
                 writer = csv.writer(o)
                 if count_articles == 1:
                     writer.writerow(header)
