@@ -76,7 +76,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='This script will add more data to the dataframe')
     parser.add_argument("-f", "--file", nargs=1, required=True, help="Input csv", metavar="PATH")
     parser.add_argument("-d", "--directory", nargs=1, required=True, help="Directory in which xml files are stored", metavar="PATH")
-    parser.add_argument("-a", "--annotation", nargs=1, required=False, help="Directory in which xml files are stored", metavar="PATH")
+    parser.add_argument("-a", "--annotation", action='store_true', help="Directory in which xml files are stored")
     
     annotation_api = config_all['api_europepmc_params']['annotations_api']['root_url']
     params = {'type':'Diseases'}
