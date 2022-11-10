@@ -67,7 +67,7 @@ def retrieveAnnotations(pmcid, annotation_api_url, params):
         for a in root.iter('annotation'):
             if  a.find(k).text:
                 l.append(a.find('exact').text)
-        annot_dict[params[k]] = list(l)
+        annot_dict[params[k]] = '|'.join(list(l))
 
     return annot_dict
 
@@ -76,15 +76,18 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='This script will add more data to the dataframe')
     parser.add_argument("-f", "--file", nargs=1, required=True, help="Input csv", metavar="PATH")
     parser.add_argument("-d", "--directory", nargs=1, required=True, help="Directory in which xml files are stored", metavar="PATH")
+    parser.add_argument("-a", "--annotation", action='store_true', help="Directory in which xml files are stored")
     
     annotation_api = config_all['api_europepmc_params']['annotations_api']['root_url']
-    params = {'type':'Diseases'}
+    params = {'type':'Organisms'}
 
     args = parser.parse_args()
     file = args.file[0]
     directory = args.directory[0]
+
     df = pd.read_csv(file)
     dic_of_dicts = []
+    annots = []
     for idx in df.itertuples():
         id =idx.PMCID
         filename=str(idx.PMCID)+".xml"
@@ -96,11 +99,23 @@ if __name__ == "__main__":
         article_d.pop("Index")
         print(article_d)
         dic_of_dicts.append(article_d)
+        
+        if args.annotation:
+            annotations = retrieveAnnotations(id, annotation_api, params)
+            annotations.update(idx._asdict())
+            annotations.pop("Index")
+            print(annotations)
+            annots.append(annotations)
 
-        annotations = retrieveAnnotations(id, annotation_api, params)
-        print(annotations)
-        dic_of_dicts.append(annotations)
-
+    #annotions
+    if args.annotation:
+        df_ann = pd.DataFrame(annots)
+    
     df_new = pd.DataFrame(dic_of_dicts)
     print(df_new)
-    df_new.to_csv("new_data.csv")
+
+    if args.annotation:
+        df = pd.merge(df_new, df_ann, how='inner', on = 'PMCID')
+        df.to_csv("new_data.csv")
+    else:
+        df_new.to_csv("new_data.csv")
