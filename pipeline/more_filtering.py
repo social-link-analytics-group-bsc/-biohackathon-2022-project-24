@@ -87,6 +87,7 @@ if __name__ == "__main__":
 
     df = pd.read_csv(file)
     dic_of_dicts = []
+    annots = []
     for idx in df.itertuples():
         id =idx.PMCID
         filename=str(idx.PMCID)+".xml"
@@ -98,13 +99,15 @@ if __name__ == "__main__":
         article_d.pop("Index")
         print(article_d)
         dic_of_dicts.append(article_d)
-
+        
         if args.annotation:
             annotations = retrieveAnnotations(id, annotation_api, params)
         annotations.update(idx._asdict())
         annotations.pop("Index")
         print(annotations)
-        dic_of_dicts.append(annotations)
+        annots.append(annotations)
+
+        
 
     df_new = pd.DataFrame(dic_of_dicts)
     print(df_new)
