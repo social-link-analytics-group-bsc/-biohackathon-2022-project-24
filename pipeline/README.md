@@ -42,7 +42,7 @@ Find the sentences containing the tokens ['man', 'woman', 'male', 'female', 'men
 python explore_methods.py
 ```
 
-## get articles info
+## get article info
 
 get metadata info given a csv containing pmcids and directory containing the articles (xml files)
 
