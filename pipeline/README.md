@@ -44,13 +44,14 @@ python explore_methods.py
 
 ## get articles info
 
-1. metadata given a csv containing list of pmcids and directory containing xml of the articles
+get metadata info given a csv containing pmcids and directory containing the articles (xml files)
 
 ```
 python more_filtering.py -f data/ids-10.csv -d data/articles/        
 ```
 
-2. add info about entities (e.g., `Organisms`) annotated in the articles 
+
+get annotation info given a csv containing pmcids and an entity type (e.g., `Organisms`) 
 
 ```
 python add_annotation_info.py -f data/ids-10.csv  -a Organisms
