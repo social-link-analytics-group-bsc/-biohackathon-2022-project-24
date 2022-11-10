@@ -84,7 +84,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     file = args.file[0]
     directory = args.directory[0]
-    annotation = args.annotation[0]
+    #annotation = args.annotation[0]
 
     df = pd.read_csv(file)
     dic_of_dicts = []
@@ -100,7 +100,7 @@ if __name__ == "__main__":
         print(article_d)
         dic_of_dicts.append(article_d)
 
-        if annotation == "yes":
+        if args.annotation:
             annotations = retrieveAnnotations(id, annotation_api, params)
             print(annotations)
             dic_of_dicts.append(annotations)
