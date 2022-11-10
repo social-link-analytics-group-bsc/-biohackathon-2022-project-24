@@ -55,7 +55,7 @@ python more_filtering.py -f data/ids-10.csv -d data/articles/
 ```
 python add_annotation_info.py -f data/ids-10.csv  -a Organisms
 
-python add_annotation_info.py -f data/ids-10.csv  -a D
+python add_annotation_info.py -f data/ids-10.csv  -a Diseases
 ```
 
 List of entities : 
