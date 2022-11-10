@@ -6,7 +6,9 @@ from nltk.tokenize import sent_tokenize, word_tokenize
 # nltk.download('punkt') # uncomment the first time you run the script
 import csv
 import os
+import pathlib
 import pandas as pd
+from tqdm import tqdm
 
 
 def find_candidate_sentences(text, relevant_tokens, get_null_sentences=False):
@@ -27,7 +29,7 @@ def find_candidate_sentences(text, relevant_tokens, get_null_sentences=False):
 
     if get_null_sentences:  # get also those IDs where there is no match
         if len(interest_sentences) == 0:
-            return ["None"]  # convert to NaN at df level
+            return
 
     return interest_sentences
 
@@ -39,8 +41,10 @@ def main():
 
     open('data/candidate_sentences.csv', 'w')
 
-    for file in glob.glob("data/clean_articles/" + "*.jsonl"):
-        # print(file)
+    for file in tqdm(pathlib.Path("data/archive_articles/").glob("*.jsonl")):
+        pmcid = file.stem
+
+
         with open(file, 'r') as o:
             data = json.load(o)
             json_df = pd.read_json(file)
@@ -56,20 +60,22 @@ def main():
             # json_df_clean.drop("TABLE", inplace=True)
 
         sentences = find_candidate_sentences(data["METHODS"], interesting_tokens, get_null_sentences=True)
+        if sentences:
 
-        with open('data/candidate_sentences.csv', 'a') as o:
-            writer = csv.writer(o)
-            if count_articles == 1:
-                writer.writerow(header)
+            with open('data/candidate_sentences_last.csv', 'a') as o:
+                writer = csv.writer(o)
+                if count_articles == 1:
+                    writer.writerow(header)
 
-            for sentence in sentences:
-                filename = os.path.basename(file[:-6]).split("archive_articles_tagged")[1]
+                for sentence in sentences:
+                    # filename = os.path.basename(file[:-6]).split("archive_articles_tagged")[1]
+                    # pmcid
 
-                try:  # Only when "full" df is used
-                    writer.writerow([filename, sentence, json_df_clean["KEYWORDS"]])
-                except:
-                    writer.writerow([filename, sentence, "None"])
-    o.close()
+                    try:  # Only when "full" df is used
+                        writer.writerow([pmcid, sentence, json_df_clean["KEYWORDS"]])
+                    except:
+                        writer.writerow([pmcid, sentence, "None"])
+            o.close()
 
 
 if __name__ == "__main__":

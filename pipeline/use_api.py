@@ -4,6 +4,7 @@ import concurrent.futures
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
+import random
 from section_tagger import section_tag, retrieveSections
 
 
@@ -145,6 +146,8 @@ def main():
 
     list_parsed_ids = set(list_parsed_ids)
     ids_to_dl = list(pmcid_to_dl.difference(list_parsed_ids))
+    # Randomize the list to avoid downloading only the first articles
+    random.shuffle(ids_to_dl)
 
     # n = 0
     # for pmcid in list(pmcid_to_dl):
