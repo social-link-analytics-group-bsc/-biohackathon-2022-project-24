@@ -100,7 +100,7 @@ if __name__ == "__main__":
         print(article_d)
         dic_of_dicts.append(article_d)
 
-        if annotation == "Y":
+        if annotation == "yes":
             annotations = retrieveAnnotations(id, annotation_api, params)
             print(annotations)
             dic_of_dicts.append(annotations)
