@@ -102,13 +102,20 @@ if __name__ == "__main__":
         
         if args.annotation:
             annotations = retrieveAnnotations(id, annotation_api, params)
-        annotations.update(idx._asdict())
-        annotations.pop("Index")
-        print(annotations)
-        annots.append(annotations)
+            annotations.update(idx._asdict())
+            annotations.pop("Index")
+            print(annotations)
+            annots.append(annotations)
 
-        
-
+    #annotions
+    if args.annotation:
+        df_ann = pd.DataFrame(annots)
+    
     df_new = pd.DataFrame(dic_of_dicts)
     print(df_new)
-    df_new.to_csv("new_data.csv")
+
+    if args.annotation:
+        df = pd.merge(df_ann, df_new, how='inner', on = 'PMCID')
+        df.to_csv("new_data.csv")
+    else:
+        df_new.to_csv("new_data.csv")
