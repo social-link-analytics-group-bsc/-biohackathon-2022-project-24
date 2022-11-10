@@ -41,3 +41,35 @@ Find the sentences containing the tokens ['man', 'woman', 'male', 'female', 'men
 ```
 python explore_methods.py
 ```
+
+## get article info
+
+get metadata info given a csv containing pmcids and directory containing the articles (xml files)
+
+```
+python more_filtering.py -f data/ids-10.csv -d data/articles/        
+```
+
+
+get annotation info given a csv containing pmcids and an entity type (e.g., `Organisms`) 
+
+```
+python add_annotation_info.py -f data/ids-10.csv  -a Organisms
+
+python add_annotation_info.py -f data/ids-10.csv  -a Diseases
+```
+
+List of entities : 
+
+```
+* Organisms
+* Diseases
+* Accessions
+* Genes/Proteins
+* Chemicals
+* Gene Ontology
+* Resources
+* Experimental Methods
+* [and more else...](https://europepmc.org/AnnotationsApi#/)
+```
+
