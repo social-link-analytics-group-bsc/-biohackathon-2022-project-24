@@ -43,7 +43,6 @@ class SBE(datasets.GeneratorBasedBuilder):
             description=_DESCRIPTION,
             features=datasets.Features(
                 {
-                    "id": datasets.Value("string"),
                     "tokens": datasets.Sequence(datasets.Value("string")),
                     "sbe_tags": datasets.Sequence(
                         datasets.features.ClassLabel(
@@ -56,6 +55,7 @@ class SBE(datasets.GeneratorBasedBuilder):
                             ]
                         )
                     ),
+                    "id": datasets.Value("string"),
                 }
             ),
             supervised_keys=None,
@@ -102,7 +102,7 @@ class SBE(datasets.GeneratorBasedBuilder):
                     sbe_tags.append(splits[1].rstrip())
             # last example
             yield guid, {
-                "id": str(guid),
                 "tokens": tokens,
                 "sbe_tags": sbe_tags,
+                "id": str(guid),
             }
