@@ -52,7 +52,6 @@ def getMetdata(pmcid, search_api_url, payload):
 '''
 
 def getAnnotations(pmcid, annotation_api_url, params):
-    print(params)
     result = get_request(annotation_api_url, params)
     root = ET.fromstring(result.content)
     return root
