@@ -11,7 +11,6 @@ python -m pip install -r requirements.txt
 To download the sample data and transform to json:
 ```
 python use_api.py 
-python section_tagger.py -f data/articles/ -o data/clean_articles/
 ```
 
 Currently the sample comes from the query "eLIfe AND ((HAS_FT:Y AND OPEN_ACCESS:Y)) AND (((SRC:MED OR SRC:PMC OR SRC:AGR OR SRC:CBA) NOT (PUB_TYPE:"Review")))"
@@ -25,19 +24,14 @@ If you want to explore different sets of data go to: https://europepmc.org/
 
 ### Tables
 
-Explore all the tables in the jsons by running:
+Explore all the tables in the jsons by running (we did not use it, no info in the tables):
 ```
 python explore_tables.py
 ```
 
-To find the occurrences of a particular word (e.g. "female"):
-```
-python explore_tables.py | grep "female" | wc -l
-```
-
 ### Methods
 
-Find the sentences containing the tokens ['man', 'woman', 'male', 'female', 'men', 'women', 'males', 'females'] with a number before it:
+Find the sentences containing the tokens ['man', 'woman', 'male', 'female', 'men', 'women', 'males', 'females'] with a number around it:
 ```
 python explore_methods.py
 ```
