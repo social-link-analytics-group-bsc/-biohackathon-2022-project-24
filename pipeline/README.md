@@ -67,3 +67,8 @@ List of entities :
 * [and more else...](https://europepmc.org/AnnotationsApi#/)
 ```
 
+get list of mesh terms associated to articles given a csv containing pmcids 
+
+```
+add_metadata.py -f new_data.csv  -m mesh
+```
