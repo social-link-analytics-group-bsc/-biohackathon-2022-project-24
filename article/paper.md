@@ -34,29 +34,40 @@ authors_short: First Author \emph{et al.}
 
 # Introduction
 
-As part of the BioHackathon Europe 2022, we here report our project on analysing the scientific literature to understand the sex balance in the articles published on EuropePMC, following last year project on the same question apply on EGA and dbgap (cite).
+As part of the BioHackathon Europe 2022, we here report our project on analysing the scientific literature to understand the sex balance in the articles published on EuropePMC, following last year's project on the same question applied on EGA and dbgap (cite).
 
 Our goal is to develop a full pipeline to automate the process of information retrieval about sample and sex representation. To that purpose, we will:
-* Collect the full dataset
+* Collect a large dataset through their API
 * Parse the relevant sections
-* Extract the required information
-* Write an analysis on the state of sex bias in biology research
+* Extract the required information using Natural Language Processing
+
+Then we plan to analyze the data by evaluating the relationship between the disclosure of sex and ratio of females/males with available variables (journal, field, etc.) and how this evolves through time.
 
 # Methodology
 
-Please keep sections to a maximum of only two levels.
 
 ## Collecting the data
 
+We collected the data using the API of EuropePMC. To get an interesting set of data for our purpose we only asked for the articles that spoke about humans or homo sapiens. 
+
+We also filtered by ... 
+
 ## Extracting the candidate sentences
+
+Since we expected the relevant information to be located in the "Methods" section, we parsed those sections and focused on finding sentences with mentions of sex and numbers.
+We extracted the candidate sentence by looking for the tokens "woman", "man", "women", "men", "female", "male", "females", and "males", and then checking if there was a number in a window of three tokens before and after the mention of sex.
+From the XX articles we had collected, we encountered XX candidate sentences that potentially contained the information we were interested on. 
 
 ## Training a model to identify the numbers
 
-### Data annotation
-
-### Model training
-
-### Model evaluation
+Once having identified the candidate sentences it was necessary to identify which numbers did correspond to sex samples' amounts. 
+Given the unstructured nature of language, it was needed to use a language model to extract this right. 
+On first place, we needed annotated data, so we deployed a platform for this purpose, and crowed-sourced the annotation by asking the participants of Biohackaton 2022 to collaborate.
+This shared effort resulted in over a thousand annotated sentences, from which we used 500 annotations for our training set, 100 for our development set and a 100 for the test set. 
+We used this data to fine-tune the BERT-base language model. We trained for 5 epochs with a learning rate of 0.00005. 
+The model obtained a precision of 87.1, a recall of 89.6 and an F1 of 88.3 in the test set.
+We employed this model to automatically annotate the whole XX articles in our dataset. 
+This resulted with XX articles containing information about the sex of the samples. 
 
 ## Analysis of the data
 
@@ -68,6 +79,8 @@ Please keep sections to a maximum of only two levels.
 
 
 # Formatting
+
+Please keep sections to a maximum of only two levels.
 
 This document use Markdown and you can look at [this tutorial](https://www.markdowntutorial.com/).
 
