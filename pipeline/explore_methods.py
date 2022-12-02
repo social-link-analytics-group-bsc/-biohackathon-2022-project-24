@@ -1,11 +1,7 @@
-from ast import Break
 import json
-import glob
-import nltk
 from nltk.tokenize import sent_tokenize, word_tokenize
 # nltk.download('punkt') # uncomment the first time you run the script
 import csv
-import os
 import pathlib
 import pandas as pd
 from tqdm import tqdm
@@ -35,7 +31,7 @@ def find_candidate_sentences(text, relevant_tokens, get_null_sentences=False):
     return interest_sentences
 
 def parsing_arguments(parser):
-    parser.add_argument("--data_path", type=str, default="data/archive_articles/",
+    parser.add_argument("--data_path", type=str, default="data/articles_human/",
                         help='Tasks to evaluate')
     parser.add_argument("--out", type=str, default='data/candidate_sentences.csv',
                         help='Tasks to evaluate')
