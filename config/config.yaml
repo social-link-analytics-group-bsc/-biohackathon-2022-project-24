@@ -24,5 +24,8 @@ search_params:
   query:  eLIfe AND (HAS_FT:Y AND OPEN_ACCESS:Y )
 
 processing_params:
-  candidate_sentence_location: ./data/candidate_sentences.csv
+  sentence_location: ./data/candidate_sentences.csv
+  json_human_folder: ./data/json_humans/
+  token_sentences: [man, woman, male, female, men, women, males, females]
+  list_tags_location: ./data/list_tags.csv
 
