@@ -1,7 +1,6 @@
 ########## This code adds section tags to the annotated files. #######
 
 from bs4 import BeautifulSoup
-import lxml
 from collections import defaultdict
 from tqdm import tqdm
 import random
@@ -9,6 +8,8 @@ import sys, io, re, os
 import argparse
 import json
 import glob
+
+from lxml import etree as ET
 
 titleMapsBody = {
     'INTRO': ['introduction', 'background', 'related literature', 'literature review', 'objective', 'aim ', 'purpose of this study', 'study (purpose|aim|aims)', '(\d)+\. (purpose|aims|aim)', '(aims|aim|purpose) of the study', '(the|drug|systematic|book) review', 'review of literature', 'related work', 'recent advance'],

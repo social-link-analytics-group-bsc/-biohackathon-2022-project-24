@@ -9,18 +9,23 @@ api_europepmc_params:
     root_url: https://europepmc.org/ftp/oa/pmcid.txt.gz
   archive_file: ./data/pmcid.txt.gz
   article_query_folder: ./data/query_articles/
+  article_human_folder: ./data/articles_human/
   article_archive_folder: ./data/archive_articles/
-  list_parsed_ids_location: ./data/list_parsed_ids.txt
+  pmcid_archive_location: ./data/pmcid_archive.txt
+  pmcid_human_location: ./data/pmcid_humans.txt
+  pmcid_species_location: ./data/pmcid_species.txt
+  pmcid_human_downloaded_location: ./data/pmcid_humans_downloaded.txt
 
 
 search_params:
-  ids_query_location: ./data/europepmc_id.txt
-  ids_archive_location: ./data/archives_ids.txt
-  accepted_species: [human, Homo Sapies]
+  accepted_species: [human, Homo Sapiens]
   dl_archive: true
   rerun_archive: false
   query:  eLIfe AND (HAS_FT:Y AND OPEN_ACCESS:Y )
 
 processing_params:
-  candidate_sentence_location: ./data/candidate_sentences.csv
+  sentence_location: ./data/candidate_sentences.csv
+  json_human_folder: ./data/json_humans/
+  token_sentences: [man, woman, male, female, men, women, males, females]
+  list_tags_location: ./data/list_tags.csv
 

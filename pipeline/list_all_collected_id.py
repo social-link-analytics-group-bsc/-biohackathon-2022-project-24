@@ -19,12 +19,12 @@ def main():
     annotation_api = config_all['api_europepmc_params']['annotations_api']['root_url']
 
     article_archive_folder = config_all['api_europepmc_params']['article_archive_folder']
-    list_parsed_ids_location = config_all['api_europepmc_params']['list_parsed_ids_location']
+    list_archive_all_ids_location = config_all['api_europepmc_params']['list_archive_all_ids_location']
 
     article_folder = article_archive_folder
     print(article_folder)
 
-    with open(list_parsed_ids_location, 'w') as f:
+    with open(list_archive_all_ids_location, 'w') as f:
         for x in pathlib.Path(article_folder).glob("*.jsonl"):
             f.write(x.stem)
             f.write('\n')
