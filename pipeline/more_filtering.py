@@ -21,11 +21,12 @@ if __name__ == "__main__":
     args = parser.parse_args()
     file = args.file[0]
     directory = args.directory[0]
-    df = pd.read_csv(file)
+    df = pd.read_csv(file, header=None)
     dic_of_dicts = []
-    for idx in df.itertuples():
-        id =idx.PMCID
-        filename=str(idx.PMCID)+".xml"
+
+    for pmcid in df[0]:
+    #     print(idx)
+        filename=str(pmcid)+".xml"
 
         with open(directory +filename,"r") as xml:
                 s_xml = xml.read()
