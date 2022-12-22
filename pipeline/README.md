@@ -36,6 +36,11 @@ Find the sentences containing the tokens ['man', 'woman', 'male', 'female', 'men
 python explore_methods.py
 ```
 
+Find the correct numbers in the extracted sentences:
+```
+python get_sex_bias.py --data $SENTENCES --out $RESULTS --model output/bert-base-uncased-en/sbe.py_8_0.00005_date_22-11-10_time_14-55-26
+```
+
 ## get article info
 
 get metadata info given a csv containing pmcids and directory containing the articles (xml files)

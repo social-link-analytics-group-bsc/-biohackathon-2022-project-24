@@ -6,11 +6,11 @@ import json
 
 def parsing_arguments(parser):
     parser.add_argument("--data", type=str, default='data/candidate_sentences_last.csv',
-                        help='Tasks to evaluate')
-    parser.add_argument("--out", type=str, default='results.json',
-                        help='Tasks to evaluate')
-    parser.add_argument("--model", type=str, default='results.json',
-                        help='Tasks to evaluate')
+                        help='Sentences that might contain numbers.')
+    parser.add_argument("--out", type=str, default='data/results.json',
+                        help='File to save the output')
+    parser.add_argument("--model", type=str, default='output/bert-base-uncased-en/sbe.py_8_0.00005_date_22-11-10_time_14-55-26',
+                        help='Pretrained model to find the numbers')
     return parser
 
 
@@ -26,7 +26,7 @@ def main():
         data = list(content)
 
     results = {}
-    nlp = pipeline("ner", model=args.model, device=0)
+    nlp = pipeline("ner", model=args.model, device=0) # if you are working locally, remove device=0
     for line in data:
         annotations = nlp(line[1])
         try:
