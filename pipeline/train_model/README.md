@@ -1,7 +1,7 @@
 ## Transform the annotations to conll format
 
 ```
-python annoations_to_conll.py
+python annotations_to_conll.py
 ```
 
 ## Train the model to extract the number of male and female
