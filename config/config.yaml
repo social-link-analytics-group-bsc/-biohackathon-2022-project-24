@@ -30,4 +30,4 @@ processing_params:
   list_level_location: ./data/list_levels.csv
   list_tag_location: ./data/list_tags.csv
   list_attr_val_location: ./data/list_attr_val.csv
-
+  list_sections_location: ./data/list_sections_details.csv
