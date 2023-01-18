@@ -18,7 +18,6 @@ api_europepmc_params:
 
 
 search_params:
-  accepted_species: [human, Homo Sapiens]
   dl_archive: true
   rerun_archive: false
   query:  eLIfe AND (HAS_FT:Y AND OPEN_ACCESS:Y )
