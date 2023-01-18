@@ -26,8 +26,10 @@ search_params:
 processing_params:
   sentence_location: ./data/candidate_sentences.csv
   json_human_folder: ./data/json_humans/
-  token_sentences: [man, woman, male, female, men, women, males, females]
+  token_sentences: [man, woman, male, female, men, women, males, females, sample]
+  list_article_location: ./data/list_article.csv
   list_level_location: ./data/list_levels.csv
   list_tag_location: ./data/list_tags.csv
   list_attr_val_location: ./data/list_attr_val.csv
   list_sections_location: ./data/list_sections_details.csv
+  list_parent_location: ./data/list_parent_details.csv
