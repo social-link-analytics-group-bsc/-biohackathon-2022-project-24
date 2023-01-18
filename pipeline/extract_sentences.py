@@ -31,7 +31,7 @@ def find_candidate_sentences(text, relevant_tokens, get_null_sentences=False):
 
     if get_null_sentences:  # get also those IDs where there is no match
         if len(interest_sentences) == 0:
-            return
+            interest_sentences = " "
 
     return interest_sentences
 
@@ -64,7 +64,6 @@ def main():
                     writer = csv.writer(o)
                     if count_articles == 1:
                         writer.writerow(header)
-
                     for sentence in sentences:
                         writer.writerow([pmcid, sentence])
                         # writer.writerow([pmcid, sentence, "None"])
