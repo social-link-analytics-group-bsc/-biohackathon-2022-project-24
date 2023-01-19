@@ -1,237 +1,135 @@
-########## This code adds section tags to the annotated files. #######
-
-from bs4 import BeautifulSoup
-from collections import defaultdict
-from tqdm import tqdm
-import random
-import sys, io, re, os
-import argparse
+import os
+import re
 import json
-import glob
+from tqdm import tqdm
+from pathlib import Path
+import xml.etree.ElementTree as ET
 
-from lxml import etree as ET
-
-titleMapsBody = {
-    'INTRO': ['introduction', 'background', 'related literature', 'literature review', 'objective', 'aim ', 'purpose of this study', 'study (purpose|aim|aims)', '(\d)+\. (purpose|aims|aim)', '(aims|aim|purpose) of the study', '(the|drug|systematic|book) review', 'review of literature', 'related work', 'recent advance'],
-    'METHODS': ['supplement', 'methods and materials', 'method', 'material', 'experimental procedure', 'implementation', 'methodology', 'treatment', 'statistical analysis', "experimental", '(\d)+\. experimental$', 'experimental (section|evaluation|design|approach|protocol|setting|set up|investigation|detail|part|pespective|tool)', "the study", '(\d)+\. the study$', "protocol", "protocols", 'study protocol', 'construction and content', 'experiment (\d)+', '^experiments$', 'analysis', 'utility', 'design', '(\d)+\. theory$', "theory", 'theory and ', 'theory of '],
-    'RESULTS': ['result', 'finding', 'diagnosis'],
-    'DISCUSS': ['discussion', 'management of', '(\d)+\. management', 'safety and tolerability', 'limitations', 'perspective', 'commentary', '(\d)+\. comment'],
-    'CONCL': ['conclusion', 'key message', 'future', 'summary', 'recommendation', 'implications for clinical practice','concluding remark'],
-    'CASE': ['case study report', 'case report', 'case presentation', 'case description', 'case (\d)+', '(\d)+\. case', 'case summary', 'case history'],
-    'ACK_FUND': ['funding', 'acknowledgement', 'acknowledgment', 'financial disclosure'],
-    'AUTH_CONT': ['author contribution', 'authors\' contribution', 'author\'s contribution'],
-    'COMP_INT': ['competing interest', 'conflict of interest', 'conflicts of interest', 'disclosure', 'decleration'],
-    'ABBR': ['abbreviation'],
-    'SUPPL': ['supplemental data', 'supplementary file', 'supplemental file', 'supplementary data', 'supplementary figure', 'supplemental figure', 'supporting information', 'supplemental file', 'supplemental material', 'supplementary material', 'supplement material', 'additional data files', 'supplemental information', 'supplementary information', 'supplemental information', 'supporting information', 'supplemental table', 'supplementary table', 'supplement table', 'supplementary material', 'supplemental material', 'supplement material', 'supplementary video']
-}
-
-titleExactMapsBody = {
-    'INTRO': ["aim", "aims", "purpose", "purposes", "purpose/aim", "purpose of study", "review", "reviews", "minireview"],
-    'METHODS': ["experimental", "the study", "protocol", "protocols"],
-    'DISCUSS': ["management", "comment", "comments"],
-    'CASE': ["case", "cases"]
-}
-
-titleMapsBack = {
-    'REF': ['reference', 'literature cited', 'references', 'bibliography'],
-    'ACK_FUND': ['funding', 'acknowledgement', 'acknowledgment', 'aknowledgement', 'acknowlegement', 'open access', 'financial support', 'grant', 'author note', 'financial disclosure'],
-    'ABBR': ['abbreviation', 'glossary'],
-    'COMP_INT': ['competing interest', 'conflict of interest', 'conflicts of interest', 'disclosure', 'decleration', 'conflits', 'interest'],
-    'SUPPL': ['supplementary', 'supporting information', 'supplemental', 'web extra material'],
-    'APPENDIX': ['appendix', 'appendices'],
-    'AUTH_CONT': ['author', 'contribution']
-}
+import concurrent.futures
+import logging
+import yaml
+logger = logging.getLogger(__name__)
+from relevant_tags import front_section, sec_section, back_section
 
 
-def createSecTag(soup, secType):
-    secTag = soup.new_tag('SecTag')
-    secTag['type'] = secType
-    return secTag
+config_path = os.path.join(os.path.dirname(
+    __file__), '../config', 'config.yaml')
+config_all = yaml.safe_load(open(config_path))
 
 
-def titlePartialMatch(title, secFlag):
-    matchKeys = []
-    if secFlag == 'body':
-        for key in titleMapsBody.keys():
-            if any(re.search(pattern,title.lower()) for pattern in titleMapsBody[key]):
-                #check for the exact match cases
-                matchKeys.append(key)
-    if secFlag == 'back':
-        for key in titleMapsBack.keys():
-            if any(re.search(pattern,title.lower()) for pattern in titleMapsBack[key]):
-                matchKeys.append(key)
-    if len(matchKeys)>0:
-        return ','.join(matchKeys)
-    else:
-        return None
-
-def titleExactMatch(title):
-    for key in titleMapsBody.keys():
-        if any(pattern==title.lower() for pattern in titleMapsBody[key]):
-            #check for the exact match cases
-            return key
-    return None
+def clean_tag(string):
+    """
+    Return a list of cleaned tags from a string
+    """
+    # Split the string on any character that is not a letter
+    words = re.split('[^a-zA-Z]', string)
+    # Lowercase all the words and filter out any empty strings
+    return [word.lower() for word in words if word]
 
 
-# add SecTag with appropriate title
-def section_tag(soup):
-    # Add Figure section
-    for fig in soup.find_all(['fig'], recursive=True):
-        if fig.find_all(['fig'], recursive=True):
-            # This fig tag is a parent fig tag. We do not want to wrap it with the section tag. so we continue.
-            continue
-        else:
-            fig_tag = createSecTag(soup, 'FIG')
-            fig.wrap(fig_tag)
-    # Add Table section
-    for fig in soup.find_all(['table-wrap'], recursive=True):
-        if fig.find_all(['table-wrap'], recursive=True):
-            # This fig tag is a parent fig tag. We do not want to wrap it with the section tag. so we continue.
-            continue
-        else:
-            fig_tag = createSecTag(soup, 'TABLE')
-            fig.wrap(fig_tag)
-    # get front section
-    if soup.front:
-        if soup.front.abstract:
-            secAbs = createSecTag(soup, 'ABSTRACT')
-            soup.front.abstract.wrap(secAbs)
-        if soup.front.find('kwd-group'):
-            secKwd = createSecTag(soup, 'KEYWORD')
-            soup.front.find('kwd-group').wrap(secKwd)
-    # get sec tags from body
-    # find sec tag and their titles, as sectag type using a dictionary mapping
-    secFlag = 'body'
-    if soup.body:
-        # print(soup.body)
-        for sec in soup.body.find_all('sec'):
-            if sec.title:
-                mappedTitle = titleExactMatch(sec.title.text)
-                if mappedTitle is None:
-                    mappedTitle = titlePartialMatch(sec.title.text, secFlag)
-                if mappedTitle:
-                    secBody = createSecTag(soup, mappedTitle)
-                    sec.wrap(secBody)
+def get_content(file_location, level, section_dictionary, values):
 
-    # get back sections
-    # find sec tag and their titles, as sectag type using a dictionary mapping
-    secFlag = 'back'
-    if soup.back:
-        # apply the title mapping to sec and the special cases, like app-group, ack, ref-list
-        for sec in soup.back.find_all(['sec', 'ref-list', 'app-group', 'ack', 'glossary', 'notes', 'fn-group'], recursive=False):
-            if sec.title:
-                mappedTitle = titlePartialMatch(sec.title.text, secFlag)
-                if mappedTitle:
-                    secBack = createSecTag(soup, mappedTitle)
-                    sec.wrap(secBack)
-            else:
-                if sec.name=='ref-list':
-                    secRef = createSecTag(soup, 'REF')
-                    sec.wrap(secRef)
-    return soup
+    with open(file_location, 'r') as f:
 
-def getfileblocks(file_path):
-    sub_file_blocks = []
-    start_str1 = '<articles><article '
-    start_str2 = '<article '
-    try:
-        with io.open(file_path, 'r', encoding='utf8') as fh:
-            for line in fh:
-                if line.startswith(start_str1) or line.startswith(start_str2):
-                    sub_file_blocks.append(line.replace('^<articles>', ''))
-                else:
-                    sub_file_blocks[-1] += line.strip().replace('</articles>$', '') 
-    except:
-        with io.open(file_path, 'r', encoding='ISO-8859-1') as fh:
-            for line in fh:
-                if line.startswith(start_str1) or line.startswith(start_str2):
-                    sub_file_blocks.append(line.replace('^<articles>', ''))
-                else:
-                    sub_file_blocks[-1] += line.strip().replace('</articles>$', '')
-    return sub_file_blocks
+        # try:
+        tree = ET.parse(f)
+        root = tree.getroot()
+        root = root.find(f'.//article/{level}')
+        # root = root.findall('.//article/*')
+
+        # except ET.ParseError:  # In case of empty file
+        if isinstance(values, str):
+            values = [values]
+        for value in values:
+            val_to_access = section_dictionary[value]
+            try:
+                tag = val_to_access['tag']
+            except KeyError:
+                tag = None
+            try:
+                attr = val_to_access['attr']
+            except KeyError:
+                attr = None
+            try:
+                attr_val = val_to_access['attr_val']
+            except KeyError:
+                attr_val = None
+            yield extract_content(root, tag, attr, attr_val)
 
 
-def process_each_file(filename, outfolder):
-    files_list = getfileblocks(filename)
-    out_file = os.path.splitext(os.path.basename(filename))[0]
-    count = 0
-    xml_soup = None
-    for each_file in files_list:
+def extract_content(root, tag=None, attr=None, attr_val=None):
+
+    for child in root.findall(tag):
+        print(child.attrib)
         try:
-            count = count + 1
-            each_file = each_file.replace('<body>', '<orig_body>')
-            each_file = each_file.replace('<body ', '<orig_body ')
-            each_file = each_file.replace('</body>', '</orig_body>')
-            #print(each_file)
-            xml_soup = BeautifulSoup(each_file, 'lxml')
-            xml_soup.html.unwrap()
-            xml_soup.body.unwrap()
-            if xml_soup.find('orig_body'):
-                xml_soup.find('orig_body').name = 'body'
-            else:
-                continue
-            section_tag(xml_soup)
-        except Exception as e:
-            print('error processing, parse error' + str(e))
-            print(each_file)
-            sys.exit(1)
-    return xml_soup, out_file
+            for c in child.find(attr):
+                print(c.attr)
+                print(len(c))
+        except TypeError:
+            pass
+        # print(child.tag)
+    #     print(child)
+        # if attr is None:
+        #     return child.text
+        # for c in child.iter():
+        #     print(c.tag)
+        #     for attr in c.attrib:
+        #         if attr_val is None:
+        #             return c.text
 
-def retrieveSections(body):
-    dictSection = {
-    'INTRO': '',
-    'METHODS': '',
-    'RESULTS': '',
-    'DISCUSS': '',
-    'CONCL': '',
-    'CASE': '',
-    'ACK_FUND': '',
-    'AUTH_CONT': '',
-    'COMP_INT': '',
-    'ABBR': '',
-    'SUPPL': '',
-    'TABLE': {},
-    'KEYWORDS': '',
-    'ABSTRACT': '',
-    'REF': '',
-    'APPENDIX': ''}
-    if body.find('SecTag'):
-        for child in body.find_all('SecTag'):
-            for section in dictSection.keys():  # For each section in dictSection
-                if section in child['type']:
-                    if section == 'TABLE':
-                        #print(child)
-                        table_id = child.find('table-wrap')['id']
-                        # table = child.find('table-wrap')
-                        table_list = []
-                        for row in child.find_all('tr'):
-                            if row.find('th'):
-                                keys = [i.text for i in row.find_all('th')]
-                                #print(keys)
-                                table_list.append(keys)
-                            if row.find('td'):
-                                values = [i.text for i in row.find_all('td')]
-                                #print(values)
-                                table_list.append(values)
-                        dictSection[section][table_id] = table_list
-                    else:
-                        dictSection[section] = ''.join(child.text).replace(
-                                                    '"', "'")
-    return dictSection
+
+def main():
+
+    dl_folder_location = config_all['api_europepmc_params']['article_human_folder']
+    sentence_location = config_all['processing_params']['sentence_location']
+    interesting_tokens = config_all['processing_params']['token_sentences']
+    list_tags_location = config_all['processing_params']['list_tag_location']
+    list_attr_val_location = config_all['processing_params']['list_attr_val_location']
+
+    entire_files_to_parse = list(Path(dl_folder_location).glob("*.xml"))
+
+    to_parse = 'SUBJECTS'
+
+    dict_value = sec_section
+
+    for file_ in tqdm(entire_files_to_parse):
+        parsed_info = dict()
+        # for level in [('front', front_section), ('sec', sec_section), ('back', back_section)]:
+        result = get_content(file_, 'sec', dict_value, to_parse)
+        for r in result:
+            pass
+            # print(r)
+        # print(result)
+#     count = 0
+#     results = dict()
+#     for file_ in tqdm(entire_files_to_parse):
+#         # print(file_.stem)
+#         try:
+#             xml = open_file(file_)
+#             tree = get_tree_xml(xml)
+#             # try:
+#             root = tree.getroot()
+#             tags_names = [t.tag for t in root.findall('.//article/*')]
+#             for tags in tags_names:
+#                 results[tags] = results.setdefault(tags, 0) + 1
+#             print(results)
+#         except AttributeError:
+#             pass
+#             # print(child)
+#             # if child:
+#             #     pass
+#             # else:
+#             #     print(file_.stem)
+#             # print(child)
+#             # for tag in child.iter():
+#             # print(tag)
+#         # parsed_section = get_section(tree, tag_sections, 'tag')
+#         count += 1
+#         # if count == 1:
+#         # break
+#         # except AttributeError:  # Empty file_
+#         #     pass
 
 
 if __name__ == "__main__":
-
-    parser = argparse.ArgumentParser(description='This script will process sentence annotated xml files, chunk them, maximum of 200 articles in a chunk and add section tag')
-    parser.add_argument("-f", "--file", nargs=1, required=True, help="Sentence annotated xml file", metavar="PATH")
-    parser.add_argument("-o", "--out", nargs=1, required=True, help="Output folder", metavar="PATH")
-    
-    args = parser.parse_args()
-
-    for file in tqdm(glob.glob(args.file[0]+"*.xml")):
-        parsed_xml, output = process_each_file(file, args.out[0])
-        if parsed_xml:
-            json_file = retrieveSections(parsed_xml)
-            with open(args.out[0]+output+'.jsonl', 'w') as o:
-                json.dump(json_file, o)
-
+    main()
