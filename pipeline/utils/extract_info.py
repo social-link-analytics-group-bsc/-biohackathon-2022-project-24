@@ -49,40 +49,32 @@ def extract_content(root, level, tag=None, attr=None, attr_val=None):
         str: the content extracted from the xml.
     """
 
+    def iterate(node, path, tag):
+        if path:
+            current_path = path + "/" + node.tag
+        else:
+            current_path = node.tag
+        for child in node:
+            if child.tag == tag:
+                return child
+            iterate(child, path=current_path, tag=tag)
+
     result = set()
-    root_level = root.find(f'.//{level}/')
-    if tag:
-        for element in root_level:
-        #for element in root.iterall(f'.//{level}/'):
+    query = f".//{level}//{tag}[@{attr}]"
+    for element in root.findall(query):
+        for el in element.iter():
+            if el.attrib.get(attr, '').strip().lower() in attr_val:
+                print(ET.tostringlist(el))
+                text = el.text
+                # text = text.strip()
+                print(text)
+                result.add(text)
 
-            if element.tag == tag:
-                print(element.tag)
-
-                for el in element.iter():
-                    if el.attrib.get(attr, '').strip().lower() in attr_val:
-                        text = ''.join(el.itertext())
-                        if text:
-                            text = '\n'.join(text.split())
-                            result.add(text)
-            # else:
-            #     for sub_element in root.findall(f'.//{level}/{element.tag}/'):
-            #         # print(sub_element.tag)
-            #         if sub_element.tag == tag:
-            #             # print(sub_element.tag, sub_element.attrib)
-            #             print(attr_val)
-            #             if sub_element.attrib.get(attr, '').strip().lower() in attr_val:
-            #                 text = ''.join(sub_element.itertext())
-            #                 print(sub_element.attrib)
-            #                 if text:
-            #                     text = '\n'.join(text.split())
-            #                     result.add(text)
-
-    # print(root, len(result))
-
-    if len(result) > 0:
-        return '\n'.join(result)
-
-
+    try:
+        # return '\n'.join(result)
+        return result
+    except TypeError:
+        return
 
 
 def return_unique_dict(values):
@@ -99,6 +91,7 @@ def return_unique_dict(values):
         attr_val = val_to_access['attr_val']
         final_val = list()
 
+        # In case there is only value for attr_val, need to convert in list
         if isinstance(attr_val, str):
             attr_val = [attr_val]
 
@@ -107,9 +100,9 @@ def return_unique_dict(values):
             if to_check not in already_done:
                 final_val.append(val)
                 already_done.add(to_check)
-        
+
+        # for attr_value in final_val:
         yield level, tag, attr, final_val
-        
 
 
 def extract_value(xml, values):
@@ -125,17 +118,16 @@ def extract_value(xml, values):
     # Use set to remove them
     # Todo: rather than set, should avoid to parse several time the same
     # Section and check the values from the relevant_tags dictionary before
-    
-    results = set()
+
+    results = list()
     if isinstance(values, str):
         values = [values]
     for level, tag, attr, attr_val in return_unique_dict(values):
-        attr_val = "".join(attr_val)
         result = extract_content(xml, level, tag, attr, attr_val)
         if result:
-            results.add(result)
+            results.append(result)
     try:
-        results = '\n'.join(results)
+        # results = '\n'.join(results)
         return results
     except TypeError:
         return
