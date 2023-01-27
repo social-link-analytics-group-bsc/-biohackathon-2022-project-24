@@ -50,6 +50,7 @@ def main():
     entire_files_to_parse = list(Path(dl_folder_location).glob("*.xml"))
     count_articles = 0
     ext_sent = 0
+    
     for file_ in tqdm(entire_files_to_parse):
         pmcid = file_.stem
         method_text = get_content(file_, interesting_fields, article_type='research-article')

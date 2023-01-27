@@ -1,4 +1,4 @@
-import os
+import os, sys
 import re
 import json
 from tqdm import tqdm
@@ -9,7 +9,11 @@ import concurrent.futures
 import logging
 import yaml
 logger = logging.getLogger(__name__)
-from relevant_tags import front_section, sec_section, back_section
+
+sys.path.append("/gpfs/projects/bsc08/bsc08494/BH22/repo_def/biohackathon-2022-project-24/pipeline/utils")
+
+from relevant_tags import tag_locations
+# from relevant_tags import front_section, sec_section, back_section
 
 
 config_path = os.path.join(os.path.dirname(
@@ -35,13 +39,16 @@ def get_content(file_location, level, section_dictionary, values):
         tree = ET.parse(f)
         root = tree.getroot()
         root = root.find(f'.//article/{level}')
-        # root = root.findall('.//article/*')
 
+        # root = root.findall('.//article/*')
         # except ET.ParseError:  # In case of empty file
+
         if isinstance(values, str):
             values = [values]
+
         for value in values:
             val_to_access = section_dictionary[value]
+
             try:
                 tag = val_to_access['tag']
             except KeyError:
@@ -59,20 +66,22 @@ def get_content(file_location, level, section_dictionary, values):
 
 def extract_content(root, tag=None, attr=None, attr_val=None):
 
+
     for child in root.findall(tag):
         print(child.attrib)
         try:
             for c in child.find(attr):
-                print(c.attr)
-                print(len(c))
+                return c.attrib
+                # print(len(c))
         except TypeError:
             pass
+
         # print(child.tag)
-    #     print(child)
+        # print(child)
         # if attr is None:
         #     return child.text
         # for c in child.iter():
-        #     print(c.tag)
+        #     # print(c.tag)
         #     for attr in c.attrib:
         #         if attr_val is None:
         #             return c.text
@@ -87,17 +96,30 @@ def main():
     list_attr_val_location = config_all['processing_params']['list_attr_val_location']
 
     entire_files_to_parse = list(Path(dl_folder_location).glob("*.xml"))
+    relevant_tags = [x for x in tag_locations.keys()]
 
-    to_parse = 'SUBJECTS'
+    # to_parse = ['SUBJECTS', "METHODS"]
 
-    dict_value = sec_section
+    # dict_value = sec_section
+    dict_value = tag_locations
+    file_count = 0
 
     for file_ in tqdm(entire_files_to_parse):
         parsed_info = dict()
         # for level in [('front', front_section), ('sec', sec_section), ('back', back_section)]:
-        result = get_content(file_, 'sec', dict_value, to_parse)
+        result = get_content(file_, 'sec', dict_value, relevant_tags)
         for r in result:
-            pass
+            print(r)
+        file_count += 1
+        if file_count == 100:
+            break
+        
+        
+
+if __name__ == "__main__":
+    main()
+
+
             # print(r)
         # print(result)
 #     count = 0
@@ -129,7 +151,3 @@ def main():
 #         # break
 #         # except AttributeError:  # Empty file_
 #         #     pass
-
-
-if __name__ == "__main__":
-    main()

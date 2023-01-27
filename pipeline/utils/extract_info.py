@@ -50,24 +50,46 @@ def extract_content(root, level, tag=None, attr=None, attr_val=None):
     """
 
     result = set()
+    root_level = root.find(f'.//{level}/')
     if tag:
-        for element in root.findall(f'.//{level}'):
+        for element in root_level:
+        #for element in root.iterall(f'.//{level}/'):
+
             if element.tag == tag:
+                print(element.tag)
+
                 for el in element.iter():
                     if el.attrib.get(attr, '').strip().lower() in attr_val:
                         text = ''.join(el.itertext())
                         if text:
-                            text = ' '.join(text.split())
+                            text = '\n'.join(text.split())
                             result.add(text)
+            # else:
+            #     for sub_element in root.findall(f'.//{level}/{element.tag}/'):
+            #         # print(sub_element.tag)
+            #         if sub_element.tag == tag:
+            #             # print(sub_element.tag, sub_element.attrib)
+            #             print(attr_val)
+            #             if sub_element.attrib.get(attr, '').strip().lower() in attr_val:
+            #                 text = ''.join(sub_element.itertext())
+            #                 print(sub_element.attrib)
+            #                 if text:
+            #                     text = '\n'.join(text.split())
+            #                     result.add(text)
+
+    # print(root, len(result))
 
     if len(result) > 0:
         return '\n'.join(result)
+
+
 
 
 def return_unique_dict(values):
 
     # Workout to avoid doing several time the same parsing
     # Should be put outside loop but require to rewrite everything
+
     already_done = set()
     for value in values:
         val_to_access = tag_locations[value]
@@ -76,13 +98,18 @@ def return_unique_dict(values):
         attr = val_to_access['attr']
         attr_val = val_to_access['attr_val']
         final_val = list()
-        for val in attr_val:
 
+        if isinstance(attr_val, str):
+            attr_val = [attr_val]
+
+        for val in attr_val:
             to_check = f'{level}_{tag}_{attr}_{val}'
             if to_check not in already_done:
                 final_val.append(val)
                 already_done.add(to_check)
+        
         yield level, tag, attr, final_val
+        
 
 
 def extract_value(xml, values):
@@ -98,10 +125,12 @@ def extract_value(xml, values):
     # Use set to remove them
     # Todo: rather than set, should avoid to parse several time the same
     # Section and check the values from the relevant_tags dictionary before
+    
     results = set()
     if isinstance(values, str):
         values = [values]
     for level, tag, attr, attr_val in return_unique_dict(values):
+        attr_val = "".join(attr_val)
         result = extract_content(xml, level, tag, attr, attr_val)
         if result:
             results.add(result)
