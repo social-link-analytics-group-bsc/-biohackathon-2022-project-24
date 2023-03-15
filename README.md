@@ -47,6 +47,7 @@ Machine learning
 * Program for the week: [https://biohackathon-europe.org/programme.html](https://biohackathon-europe.org/programme.html)
 * Link to official repository: [https://github.com/elixir-europe/biohackathon-projects-2022/tree/main/24](https://github.com/elixir-europe/biohackathon-projects-2022/tree/main/24)
 * Google slides: [https://docs.google.com/presentation/d/1NY7OVvQRV7Xmer_kUMcxED5fQczaYodabIyovSOpm7Q/edit?usp=sharing](https://docs.google.com/presentation/d/1NY7OVvQRV7Xmer_kUMcxED5fQczaYodabIyovSOpm7Q/edit?usp=sharing)
+* Meeting notes: [https://docs.google.com/document/d/1vELBqp-z_Nuc2lNQLFZisapFq_4SMF4Nq14sQGs1suI/edit?usp=sharing](https://docs.google.com/document/d/1vELBqp-z_Nuc2lNQLFZisapFq_4SMF4Nq14sQGs1suI/edit?usp=sharing)
 
 
 ### EuropePMC
