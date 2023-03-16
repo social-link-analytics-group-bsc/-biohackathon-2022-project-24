@@ -4,7 +4,7 @@
 python annotations_to_conll.py
 ```
 
-## Train the model to extract the number of male and female
+## Train the model to extract the number of male and female in the server
 
 ```
 sh train_model.sh

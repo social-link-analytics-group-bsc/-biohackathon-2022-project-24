@@ -47,11 +47,12 @@ class SBE(datasets.GeneratorBasedBuilder):
                     "sbe_tags": datasets.Sequence(
                         datasets.features.ClassLabel(
                             names=[
-                                "F-NUM",
-                                "M-NUM",
-                                "F-PER",
-                                "M-PER",
-                                "O"
+                                "n_fem",
+                                "n_male",
+                                "perc_fem",
+                                "perc_male",
+                                "sample",
+                                "O",
                             ]
                         )
                     ),
