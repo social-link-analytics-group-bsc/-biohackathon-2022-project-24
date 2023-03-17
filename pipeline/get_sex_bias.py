@@ -3,6 +3,8 @@ from pprint import pprint
 import csv
 import argparse
 import json
+from tqdm import tqdm
+
 
 def parsing_arguments(parser):
     parser.add_argument("--data", type=str, default='data/candidate_sentences_last.csv',
@@ -19,35 +21,27 @@ def main():
     parser = parsing_arguments(parser)
     args = parser.parse_args()
     print(args)
-
+    print('Loading the data...')
     with open(args.data , 'r') as file:
         content = csv.reader(file, quotechar='"')
         #next(content)
         data = list(content)
 
     results = {}
+    print('Loading the model...')
     nlp = pipeline("ner", model=args.model, device=0) # if you are working locally, remove device=0
-    for line in data:
+    for line in tqdm(data):
         annotations = nlp(line[1])
+        print(annotations)
         try:
             results[line[0]]
         except KeyError:
-            results[line[0]] = {'female':[], 'male':[], 'female_percentage':[], 'male_percentage':[]}
+            results[line[0]] = {'n_fem':[], 'n_male':[], 'perc_fem':[], 'perc_male':[], 'sample':[]}
         for annotation in annotations:
-            #print(annotation["entity"], annotation["word"])
-            if annotation["entity"] == "M-NUM":
-                results[line[0]]['male'].append(annotation["word"])
-            elif annotation["entity"] == "F-NUM":
-                results[line[0]]['female'].append(annotation["word"])
-            elif annotation["entity"] == "M-PER":
-                results[line[0]]['male_percentage'].append(annotation["word"])
-            elif annotation["entity"] == "F-PER":
-                results[line[0]]['female_percentage'].append(annotation["word"])
-        #print(line)
+            results[line[0]][annotation["entity"]].append(annotation["word"])
 
     with open(args.out, 'w') as o:
         json.dump(results, o)
-
 
 if __name__ == "__main__":
     main()
