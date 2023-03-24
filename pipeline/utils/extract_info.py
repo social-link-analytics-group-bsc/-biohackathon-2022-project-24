@@ -1,8 +1,8 @@
 import xml.etree.ElementTree as ET
+from utils.relevant_tags import tag_locations
 
 import logging
 logger = logging.getLogger(__name__)
-from utils.relevant_tags import tag_locations
 
 
 def get_root(file_location):
@@ -48,38 +48,23 @@ def extract_content(root, level, tag=None, attr=None, attr_val=None):
     Returns:
         str: the content extracted from the xml.
     """
-
-    def iterate(node, path, tag):
-        if path:
-            current_path = path + "/" + node.tag
-        else:
-            current_path = node.tag
-        for child in node:
-            if child.tag == tag:
-                return child
-            iterate(child, path=current_path, tag=tag)
-
     result = set()
-    query = f".//{level}//{tag}[@{attr}]"
-    for element in root.findall(query):
-        for el in element.iter():
-            if el.attrib.get(attr, '').strip().lower() in attr_val:
-                print(ET.tostringlist(el))
-                text = el.text
-                # text = text.strip()
-                print(text)
-                result.add(text)
-
-    try:
-        # return '\n'.join(result)
-        return result
-    except TypeError:
-        return
+    if tag:
+        for element in root.findall(f'.//{level}'):
+            if element.tag == tag:
+                for el in element.iter():
+                    if el.attrib.get(attr, '').strip().lower() in attr_val:
+                        text = ''.join(el.itertext())
+                        if text:
+                            text = ' '.join(text.split())
+                            result.add(text)
+    if len(result) > 0:
+        return '\n'.join(result)
 
 
 def return_unique_dict(values):
 
-    # Workout to avoid doing several time the same parsing
+    # Temporal fix to avoid doing several time the same parsing
     # Should be put outside loop but require to rewrite everything
 
     already_done = set()
@@ -90,20 +75,13 @@ def return_unique_dict(values):
         attr = val_to_access['attr']
         attr_val = val_to_access['attr_val']
         final_val = list()
-
-        # In case there is only value for attr_val, need to convert in list
-        if isinstance(attr_val, str):
-            attr_val = [attr_val]
-
         for val in attr_val:
+
             to_check = f'{level}_{tag}_{attr}_{val}'
             if to_check not in already_done:
                 final_val.append(val)
                 already_done.add(to_check)
-
-        # for attr_value in final_val:
-        yield level, tag, attr, final_val
-
+            yield level, tag, attr, final_val
 
 def extract_value(xml, values):
     """
@@ -118,16 +96,15 @@ def extract_value(xml, values):
     # Use set to remove them
     # Todo: rather than set, should avoid to parse several time the same
     # Section and check the values from the relevant_tags dictionary before
-
-    results = list()
+    results = set()
     if isinstance(values, str):
         values = [values]
     for level, tag, attr, attr_val in return_unique_dict(values):
         result = extract_content(xml, level, tag, attr, attr_val)
         if result:
-            results.append(result)
+            results.add(result)
     try:
-        # results = '\n'.join(results)
+        results = '\n'.join(results)
         return results
     except TypeError:
         return
@@ -163,6 +140,7 @@ def multiple_content(file_location, dictionary_values, article_type='research-ar
     """
     dict_result = dict()
     for content in dictionary_values:
-        result = get_content(file_location, dictionary_values[content], article_type)
+        result = get_content(
+            file_location, dictionary_values[content], article_type)
         dict_result[content] = result
     return dict_result

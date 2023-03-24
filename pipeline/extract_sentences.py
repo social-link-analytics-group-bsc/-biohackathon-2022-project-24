@@ -50,14 +50,16 @@ def main():
     entire_files_to_parse = list(Path(dl_folder_location).glob("*.xml"))
     count_articles = 0
     ext_sent = 0
-    
+
     for file_ in tqdm(entire_files_to_parse):
         pmcid = file_.stem
-        method_text = get_content(file_, interesting_fields, article_type='research-article')
+        method_text = get_content(
+            file_, interesting_fields, article_type='research-article')
 
         if method_text:
             count_articles += 1
-            sentences = find_candidate_sentences(method_text, interesting_tokens, get_null_sentences=True)
+            sentences = find_candidate_sentences(
+                method_text, interesting_tokens, get_null_sentences=True)
             if sentences:
                 ext_sent += 1
 
@@ -69,7 +71,8 @@ def main():
                         writer.writerow([pmcid, sentence])
                         # writer.writerow([pmcid, sentence, "None"])
                 o.close()
-    print(f'total of article with methods and subject extracted: {count_articles}')
+    print(
+        f'total of article with methods and subject extracted: {count_articles}')
     print(f'total of article with extracted sentences: {ext_sent}')
 
 
