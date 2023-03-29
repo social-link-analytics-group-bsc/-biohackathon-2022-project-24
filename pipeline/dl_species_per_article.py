@@ -43,13 +43,11 @@ def get_species(pmcid, annotation_url):
     try:
 
         result_json = result.json()
-        species = None
+        species = set()
         for dictionary in result_json:
             for d in dictionary['annotations']:
-                species = d['exact']
-                break
-        
-        print(pmcid, species)
+                species.add(d['exact'])
+
         return pmcid, species
 
     except AttributeError:  # When not getting anything
@@ -90,10 +88,10 @@ def get_list_to_dl(pmcid_archive_location, pmcid_species_location):
 def main():
     annotation_api = config_all['api_europepmc_params']['annotations_api']['root_url']
 
-    pmcid_archive_location = config_all['api_europepmc_params']['pmcid_archive_location']
-    pmcid_species_location = config_all['api_europepmc_params']['pmcid_species_location']
+    pmcid_archive_file = config_all['api_europepmc_params']['pmcid_archive_file']
+    pmcid_species_file = config_all['api_europepmc_params']['pmcid_species_file']
 
-    ids_to_dl = get_list_to_dl(pmcid_archive_location, pmcid_species_location)
+    ids_to_dl = get_list_to_dl(pmcid_archive_file, pmcid_species_file)
     futures = []
     executor = concurrent.futures.ThreadPoolExecutor()
     print('Starting the process')
@@ -103,17 +101,19 @@ def main():
 
     print('Process started. Getting results')
     pbar = tqdm(total=len(ids_to_dl))  # Init pbar
-    with open(pmcid_species_location, 'a') as f:
+    with open(pmcid_species_file, 'a') as f:
         for future in concurrent.futures.as_completed(futures):
 
             result_pmcid, species = future.result()
             try:
 
-                species_dictionary[species] += 1
+                for spec in species:
+                    species_dictionary[spec] += 1
             except KeyError:
-                species_dictionary[species] = 1
+                for spec in species:
+                    species_dictionary[spec] = 1
 
-            f.write(f"{result_pmcid},{species}")
+            f.write(f"{result_pmcid},{','.join(species)}")
             f.write('\n')
             pbar.update(n=1)
             exception = future.exception()

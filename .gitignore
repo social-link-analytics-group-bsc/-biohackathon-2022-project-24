@@ -1,6 +1,8 @@
 # Exlude articles download
 
 */data/articles/*
+*/data/pmcid_txt.gz
+*/data/*.txt
 
 
 # Byte-compiled / optimized / DLL files

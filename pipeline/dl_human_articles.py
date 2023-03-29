@@ -2,10 +2,8 @@ import requests
 from requests.exceptions import HTTPError
 import concurrent.futures
 import random
-from section_tagger import section_tag, retrieveSections
 import logging
 import os
-import json
 import yaml
 from tqdm import tqdm
 import urllib.parse
@@ -45,14 +43,11 @@ def api_search(pmcid, root_url):
     return soup
 
 
-def tag_xml(soup):
-    return section_tag(soup)
-
-
 def get_pmcidlist(file_location):
     with open(file_location, 'r') as f:
         for l in f:
-            yield l.rstrip()
+            pmcid, *species = l.split(',')
+            yield pmcid.rstrip().lower(), [spec.rstrip().lower() for spec in species]
 
 
 def recording_pmcid(api, pmcid, dl_folder):
@@ -63,15 +58,6 @@ def recording_pmcid(api, pmcid, dl_folder):
     try:
         with open(filename_xml, 'w') as f:
             f.write(article.prettify())
-        parsed_xml = tag_xml(article)
-        if parsed_xml:
-            filename_json = dl_folder + pmcid + '.jsonl'
-            try:
-                json_file = retrieveSections(parsed_xml)
-                with open(filename_json, 'w') as o:
-                    json.dump(json_file, o)
-            except KeyError:  # For some the key 'id' is not existing anc cannod find the tables
-                recorded = False
     except AttributeError:
         recorded = False
     return pmcid, recorded
@@ -86,16 +72,27 @@ def get_parsed_list(file_location):
         pass
 
 
-def get_list_to_dl(pmcid_todl_location, pmcid_alreadydl_location):
+def get_list_to_dl(pmcid_todl_location, pmcid_alreadydl_location, human_terms):
+    """
+    Parse the list of pmcid which contains the species.
+    Subselect only the ones that contains one of the
+    term associated to human, and remove the one already dl
+    """
+    def check_species(specie_list, human_terms):
+        if any(x in human_terms for x in specie_list):
+            return True
+    pmcid_to_dl = [pmcid for pmcid, species in get_pmcidlist(
+        pmcid_todl_location) if check_species(species, human_terms)]
 
-    pmcid_to_dl = set(get_pmcidlist(pmcid_todl_location))
+
+    pmcid_to_dl=set(pmcid_to_dl)
     print(f"Len of pmcid_to_dl: {len(pmcid_to_dl)}")
 
-    list_parsed = set(
+    list_parsed=set(
         get_parsed_list(pmcid_alreadydl_location))
     print(f"Len of already done: {len(list_parsed)}")
 
-    ids_to_dl = list(pmcid_to_dl.difference(list_parsed))
+    ids_to_dl=list(pmcid_to_dl.difference(list_parsed))
     print(f"Len of pmcid to parse: {len(ids_to_dl)}")
     # Randomize the list to avoid downloading only the first articles
     random.shuffle(ids_to_dl)
@@ -103,31 +100,33 @@ def get_list_to_dl(pmcid_todl_location, pmcid_alreadydl_location):
 
 
 def main():
-    rest_api = config_all['api_europepmc_params']['rest_articles']['root_url']
+    rest_api=config_all['api_europepmc_params']['rest_articles']['root_url']
 
-    dl_folder_location = config_all['api_europepmc_params']['article_human_folder']
-    pmcid_todl_location = config_all['api_europepmc_params']['pmcid_human_location']
-    pmcid_alreadydl_location = config_all['api_europepmc_params']['pmcid_human_downloaded_location']
+    article_folder_location=config_all['api_europepmc_params']['article_human_folder']
+    pmcid_species_file=config_all['api_europepmc_params']['pmcid_species_file']
+    human_terms=config_all['search_params']['human_terms']
+    pmcid_human_downloaded_file=config_all['api_europepmc_params']['pmcid_human_downloaded_file']
 
-    ids_to_dl = get_list_to_dl(pmcid_todl_location, pmcid_alreadydl_location)
-    futures = []
-    executor = concurrent.futures.ThreadPoolExecutor()
+    ids_to_dl=get_list_to_dl(
+        pmcid_species_file, pmcid_human_downloaded_file, human_terms)
+    futures=[]
+    executor=concurrent.futures.ThreadPoolExecutor()
     print('Starting the process')
-    futures = [executor.submit(recording_pmcid, rest_api, pmcid, dl_folder_location)
+    futures=[executor.submit(recording_pmcid, rest_api, pmcid, article_folder_location)
                for pmcid in ids_to_dl]
 
     print('Process started. Getting results')
-    pbar = tqdm(total=len(ids_to_dl))  # Init pbar
-    with open(pmcid_alreadydl_location, 'a') as f:
+    pbar=tqdm(total=len(ids_to_dl))  # Init pbar
+    with open(pmcid_human_downloaded_file, 'a') as f:
         for future in concurrent.futures.as_completed(futures):
 
-            result_pmcid, result_record = future.result()
+            result_pmcid, result_record=future.result()
             f.write(f"{result_pmcid}, {str(result_record)}")
             f.write('\n')
             pbar.update(n=1)
-            exception = future.exception()
+            exception=future.exception()
             if exception:
-                raise(exception)
+                raise (exception)
             if result_record is False:
                 print(f'Did not recorded: {result_pmcid}')
 

@@ -80,25 +80,24 @@ def retrievePmcids(root):
 
 
 def main():
-    api_root_article = config_all['api_europepmc_params']['rest_articles']['root_url']  
-    ids_query_location = config_all['search_params']['ids_query_location']
+    api_root_article = config_all['api_europepmc_params']['rest_articles']['root_url']
     dl_archive = config_all['search_params']['dl_archive']
     rerun_archive = config_all['search_params']['rerun_archive']
-    ids_archive_location = config_all['search_params']['ids_archive_location']
+    pmcid_archive_file = config_all['api_europepmc_params']['pmcid_archive_file']
     archive_url = config_all['api_europepmc_params']['archive_api']['root_url']
-    archive_filelocation = config_all['api_europepmc_params']['archive_file']
+    archive_file = config_all['api_europepmc_params']['archive_file']
     query = config_all['search_params']['query']
 
     if dl_archive is True:
         print('Downloading archive')
-        list_pcmids = get_archive(archive_filelocation, archive_url, rerun_archive)
-        filenames = ids_archive_location
+        list_pcmids = get_archive(
+            archive_file, archive_url, rerun_archive)
+        filename = pmcid_archive_file
 
     else:
         list_pcmids = getting_pmcids(query, api_root_article)
-        filename = ids_query_location
-    
-    
+        filename = pmcid_archive_file
+
     with open(filename, 'w') as f:
         for pmcid in list_pcmids:
             print(pmcid)
