@@ -1,8 +1,8 @@
 import xml.etree.ElementTree as ET
-from utils.relevant_tags import tag_locations
 
 import logging
 logger = logging.getLogger(__name__)
+from utils.relevant_tags import tag_locations
 
 
 def get_root(file_location):
@@ -48,26 +48,57 @@ def extract_content(root, level, tag=None, attr=None, attr_val=None):
     Returns:
         str: the content extracted from the xml.
     """
+
+    def iterate(node, path, tag):
+        if path:
+            current_path = path + "/" + node.tag
+        else:
+            current_path = node.tag
+        for child in node:
+            if child.tag == tag:
+                return child
+            iterate(child, path=current_path, tag=tag)
+
     result = set()
-    if tag:
-        for element in root.findall(f'.//{level}'):
-            if element.tag == tag:
-                for el in element.iter():
-                    if el.attrib.get(attr, '').strip().lower() in attr_val:
-                        text = ''.join(el.itertext())
-                        if text:
-                            text = ' '.join(text.split())
-                            result.add(text)
-    if len(result) > 0:
-        return '\n'.join(result)
+    result_dict = dict() # using tagas as keys also would avoid repeating results
+
+    query = f".//{level}//{tag}[@{attr}]"
+    for element in root.findall(query):
+        for el in element.iter():
+            if el.attrib.get(attr, '').strip().lower() in attr_val:
+                # print(ET.tostringlist(el))
+                
+                if el.text.strip() is None or el.text.strip() is "": # HOTFIX: go one level deeper
+                    full_name = str()
+                    for sub_element in el.iter():
+                        tag = sub_element.tag.strip().lower()
+                        text = sub_element.text.strip()
+
+                        if tag == "surname":
+                            full_name = text
+                        if tag == "given-names":
+                            full_name = text + " " + full_name
+                    
+                    result.add(full_name)
+
+                else:
+                    text = el.text
+                    result.add(text.strip())
+
+    try:
+        # return '\n'.join(result)
+        return result
+    except TypeError:
+        return
 
 
 def return_unique_dict(values):
 
-    # Temporal fix to avoid doing several time the same parsing
+    # Workout to avoid doing several time the same parsing
     # Should be put outside loop but require to rewrite everything
 
     already_done = set()
+
     for value in values:
         val_to_access = tag_locations[value]
         level = val_to_access['level']
@@ -75,13 +106,20 @@ def return_unique_dict(values):
         attr = val_to_access['attr']
         attr_val = val_to_access['attr_val']
         final_val = list()
-        for val in attr_val:
 
+        # In case there is only value for attr_val, need to convert in list
+        if isinstance(attr_val, str):
+            attr_val = [attr_val]
+
+        for val in attr_val:
             to_check = f'{level}_{tag}_{attr}_{val}'
             if to_check not in already_done:
                 final_val.append(val)
                 already_done.add(to_check)
-            yield level, tag, attr, final_val
+
+        # for attr_value in final_val:
+        yield level, tag, attr, final_val
+
 
 def extract_value(xml, values):
     """
@@ -96,17 +134,23 @@ def extract_value(xml, values):
     # Use set to remove them
     # Todo: rather than set, should avoid to parse several time the same
     # Section and check the values from the relevant_tags dictionary before
-    results = set()
+
+    results = list()
+
     if isinstance(values, str):
         values = [values]
+
     for level, tag, attr, attr_val in return_unique_dict(values):
         result = extract_content(xml, level, tag, attr, attr_val)
         if result:
-            results.add(result)
+            result_string = str(list(result)[0]).strip()
+            results.append(result_string)
+        else:
+            return results
     try:
-        results = '\n'.join(results)
+        # results_string = ', '.join(results)
         return results
-    except TypeError:
+    except: # Was a TypeError (why?), but made it more general
         return
 
 
@@ -140,7 +184,6 @@ def multiple_content(file_location, dictionary_values, article_type='research-ar
     """
     dict_result = dict()
     for content in dictionary_values:
-        result = get_content(
-            file_location, dictionary_values[content], article_type)
+        result = get_content(file_location, dictionary_values[content], article_type)
         dict_result[content] = result
     return dict_result

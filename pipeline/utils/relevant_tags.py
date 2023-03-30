@@ -13,7 +13,7 @@ tag_locations = {
         'level': 'front',
         'tag': 'journal-id',
         'attr': 'journal-id-type',
-        'attr_val': 'publisher-id'
+        'attr_val': 'nlm-ta'  # works better than publisher-id
     },
     'YEAR': {
         'level': 'front',
