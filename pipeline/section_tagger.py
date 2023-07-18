@@ -30,7 +30,7 @@ def main():
     entire_files_to_parse = list(Path(dl_folder_location).glob("*.xml"))
     entire_files_to_parse = random.sample(entire_files_to_parse, 1000)
 
-    interesting_fields = ['METHODS']
+    interesting_fields = ['YEAR']
 
     # dict_value = sec_section
 
