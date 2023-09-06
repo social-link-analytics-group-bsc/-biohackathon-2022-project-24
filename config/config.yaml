@@ -5,19 +5,19 @@ api_europepmc_params:
     root_url: http://europepmc.org/oai.cgi 
   annotations_api:
     root_url: http://www.ebi.ac.uk/europepmc/annotations_api/annotationsByArticleIds
+  # Should only contains the Open access articles but didn't check it
   archive_api:
     root_url: https://europepmc.org/ftp/oa/pmcid.txt.gz
   archive_file: ./data/pmcid.txt.gz
   article_query_folder: ./data/query_articles/
   article_human_folder: ./data/articles_human/
-  article_archive_folder: ./data/archive_articles/
-  pmcid_archive_file: ./data/pmcid_archive.txt
   pmcid_species_file: ./data/pmcid_species.txt
-  pmcid_human_downloaded_file: ./data/pmcid_humans_downloaded.txt
+  # Used in previous script to be able to rerun the script without redl everything. Maybe still needed
+  # For the new downloading script
+  pmcid_human_file: ./data/pmcid_humans.txt
 
 
 search_params:
-  dl_archive: true
   rerun_archive: true
   query:  eLIfe AND (HAS_FT:Y AND OPEN_ACCESS:Y )
   # found using the script species_exploration.ipynb for manual exploration of the different terms
