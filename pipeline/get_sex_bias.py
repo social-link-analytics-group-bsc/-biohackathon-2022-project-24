@@ -39,9 +39,11 @@ def main():
             results[line[0]] = {'n_fem':[], 'n_male':[], 'perc_fem':[], 'perc_male':[], 'sample':[]}
         for annotation in annotations:
             results[line[0]][annotation["entity"]].append(annotation["word"])
+        with open(args.out, "a") as f_h:
+            json.dump(results[line[0]], f_h)
 
-    with open(args.out, 'w') as o:
-        json.dump(results, o)
+    # with open(args.out, 'w') as o:
+    #     json.dump(results, o)
 
 if __name__ == "__main__":
     main()
