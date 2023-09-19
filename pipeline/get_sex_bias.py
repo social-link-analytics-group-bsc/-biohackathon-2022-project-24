@@ -25,25 +25,44 @@ def main():
     with open(args.data , 'r') as file:
         content = csv.reader(file, quotechar='"')
         #next(content)
-        data = list(content)
+        #data = list(content)
 
-    results = {}
-    print('Loading the model...')
-    nlp = pipeline("ner", model=args.model, device=0) # if you are working locally, remove device=0
-    for line in tqdm(data):
-        annotations = nlp(line[1])
-        print(annotations)
+        # Check to see if there is an index of the results we should start at
         try:
-            results[line[0]]
-        except KeyError:
-            results[line[0]] = {'n_fem':[], 'n_male':[], 'perc_fem':[], 'perc_male':[], 'sample':[]}
-        for annotation in annotations:
-            results[line[0]][annotation["entity"]].append(annotation["word"])
-        with open(args.out, "a") as f_h:
-            json.dump(results[line[0]], f_h)
+            # Try to open the text file and read the starting index
+            with open('start_index.txt', 'r') as file:
+                start_index = int(file.read())
+        except FileNotFoundError:
+            start_index = 0
+        except ValueError:
+            start_index = 0
 
-    # with open(args.out, 'w') as o:
-    #     json.dump(results, o)
+        results = {}
+        print('Loading the model...')
+        nlp = pipeline("ner", model=args.model, device=0) # if you are working locally, remove device=0
+        for line in tqdm(list(content)[start_index:]):
+            annotations = nlp(line[1])
+            print(annotations)
+            try:
+                results[line[0]]
+            except KeyError:
+                results[line[0]] = {'n_fem':[], 'n_male':[], 'perc_fem':[], 'perc_male':[], 'sample':[]}
+            for annotation in annotations:
+                results[line[0]][annotation["entity"]].append(annotation["word"])
+            with open(args.out, "a") as f_h:
+                json.dump(results[line[0]], f_h)
+            # Record index
+            start_index += 1
+            with open('start_index.txt', 'w') as file:
+                file.write(str(start_index))
+        
+        # ISSUE with adding the json dump within the for loop is that if there are multiple results/
+        # annotations/sentences for one pmcid, then they will each be written as separate 
+        # entries in the json file, adding on the previous one each time so that the last
+        # instance of a pmcid entry written in the json file is the most up to date.
+        # We could use this to then write a quick script that only keeps the last entry of a
+        # pmcid in the json file. Or is there a way to write directly to a previous entry
+        # in a json file?
 
 if __name__ == "__main__":
     main()
