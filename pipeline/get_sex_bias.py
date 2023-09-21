@@ -25,23 +25,62 @@ def main():
     with open(args.data , 'r') as file:
         content = csv.reader(file, quotechar='"')
         #next(content)
-        data = list(content)
+        #data = list(content)
 
-    results = {}
-    print('Loading the model...')
-    nlp = pipeline("ner", model=args.model, device=0) # if you are working locally, remove device=0
-    for line in tqdm(data):
-        annotations = nlp(line[1])
-        print(annotations)
+        # Check to see if there is an index of the results we should start at
         try:
-            results[line[0]]
-        except KeyError:
-            results[line[0]] = {'n_fem':[], 'n_male':[], 'perc_fem':[], 'perc_male':[], 'sample':[]}
-        for annotation in annotations:
-            results[line[0]][annotation["entity"]].append(annotation["word"])
+            # Try to open the text file and read the starting index
+            with open('./output/start_index.txt', 'r') as file:
+                start_index = int(file.read())
+        except FileNotFoundError:
+            start_index = 0
+        except ValueError:
+            start_index = 0
 
-    with open(args.out, 'w') as o:
-        json.dump(results, o)
+        print('Loading the model...')
+        #nlp = pipeline("ner", model=args.model, device=0)
+        nlp = pipeline("ner", model=args.model) # if you are working locally, remove device=0
+
+        count = 0
+        prev_id = None
+        curr_id = None
+        results = {}
+        iterator = iter(list(content)[start_index:])
+
+        # While loop working here depends on input file being sorted by PMCID such that
+        # multiple entries pertaining to the same PMCID are consecutive in the file
+        progress_bar = tqdm(total=len(list(content)) - start_index, desc="Processing Lines", dynamic_ncols=True)
+        while True:
+            try:
+                line = next(iterator)
+                annotations = nlp(line[1])
+                curr_id = line[0]
+                if curr_id == prev_id:
+                    # add to existing entry
+                    for annotation in annotations:
+                        results[annotation["entity"]].append(annotation["word"])
+                else:
+                    # save current entry to json file
+                    if results:
+                        with open(args.out, "a") as f_h:
+                            json.dump(results, f_h)
+                            count += 1
+                    # create new results entry 
+                    results = {'n_fem':[], 'n_male':[], 'perc_fem':[], 'perc_male':[], 'sample':[]}
+                    for annotation in annotations:
+                        results[annotation["entity"]].append(annotation["word"])
+                    # set prev_id to curr_id
+                    prev_id = curr_id
+                # Record index
+                start_index += 1
+                with open('./output/start_index.txt', 'w') as file:
+                    file.write(str(start_index))
+                progress_bar.update(1)
+            except StopIteration:
+                break  # Exit the loop when there are no more items
+        
+        print(f"The number of entries in output file '{args.out}' is: {count}")
+
 
 if __name__ == "__main__":
     main()
