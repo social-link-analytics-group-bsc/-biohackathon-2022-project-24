@@ -1,5 +1,8 @@
 # pipeline
 
+![Overview](https://github.com/social-link-analytics-group-bsc/biohackathon-2022-project-24/blob/main/pipeline/BH22_Pipeline_v0.png)
+
+
 ## Download EuropePMC samples from list of pmcids
 
 ```
