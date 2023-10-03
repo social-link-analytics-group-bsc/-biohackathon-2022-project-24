@@ -15,6 +15,7 @@ api_europepmc_params:
   # Used in previous script to be able to rerun the script without redl everything. Maybe still needed
   # For the new downloading script
   pmcid_human_file: ./data/pmcid_humans.txt
+  db_info_articles: ./data/db_info_articles.sqlite3
 
 
 search_params:
@@ -33,3 +34,4 @@ processing_params:
   list_attr_val_location: ./data/exploration/list_attr_val.csv
   list_sections_location: ./data/exploration/list_sections_details.csv
   list_parent_location: ./data/exploration/list_parent_details.csv
+  
