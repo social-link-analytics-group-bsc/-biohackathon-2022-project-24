@@ -8,20 +8,19 @@ import sqlite3
 import sys
 import os
 import yaml
+import nltk
+nltk.download('punkt')  # Download the sentence tokenizer model (if not already downloaded)
+from nltk.tokenize import sent_tokenize
 
 
 def parsing_arguments(parser):
-    # parser.add_argument("--data", type=str, default='data/candidate_sentences_last.csv',
-    #                     help='Sentences that might contain numbers.')
-    parser.add_argument("--out", type=str, default='data/results.json',
-                        help='File to save the output')
     parser.add_argument("--model", type=str, default='output/bert-base-uncased-en/sbe.py_8_0.00005_date_22-11-10_time_14-55-26',
                         help='Pretrained model to find the numbers')
     return parser
 
 # Method for getting database entries that still need to be run through the model
 def get_entries(conn):
-    SQL_QUERY = 'SELECT Main.pmcid, Main.methods FROM Main LEFT JOIN Results ON Main.pmcid = Results.pmcid WHERE Results.pmcid IS NULL;'
+    SQL_QUERY = 'SELECT Main.pmcid, Main.methods FROM Main LEFT JOIN Checks ON Main.pmcid = Checks.pmcid WHERE Checks.results IS NULL;'
     cur = conn.cursor()
     cur.execute(SQL_QUERY)
     return cur.fetchall()
@@ -32,24 +31,27 @@ def create_results_table(conn):
     c.execute(
         """CREATE TABLE IF NOT EXISTS "Results" (
                 "pmcid"	TEXT NOT NULL,
+                "sentence_index"	INTEGER,
                 "n_fem"	TEXT,
                 "n_male"	TEXT,
                 "perc_fem"	TEXT,
                 "perc_male"	TEXT,
                 "sample"	TEXT,
-                PRIMARY KEY("pmcid"),
                 FOREIGN KEY ("pmcid") REFERENCES Main("pmcid")
             )"""
         )
     conn.commit()
 
 # Add new row to results table
-def add_result(conn, values):
-    SQL_QUERY = "INSERT INTO Results (pmcid, n_male, n_fem, perc_male, perc_fem, sample) VALUES (?, ?, ?, ?, ?, ?)"
+def add_result(conn, pmcid, results):
     cur = conn.cursor()
-    cur.execute(SQL_QUERY, values)
-    conn.commit()
+    SQL_QUERY = "INSERT INTO Results (pmcid, sentence_index, n_male, n_fem, perc_male, perc_fem, sample) VALUES  (?, ?, ?, ?, ?, ?, ?)"
+    for row in results:
+        cur.execute(SQL_QUERY, row)
 
+    SQL_QUERY = "INSERT INTO Checks (pmcid, results) VALUES (?, 1) ON CONFLICT (pmcid) DO UPDATE SET results = 1;"
+    cur.execute(SQL_QUERY, (pmcid,))
+    conn.commit()
 
 def main():
     parser = argparse.ArgumentParser()
@@ -68,24 +70,36 @@ def main():
 
     # Create results table (if not already created)
     create_results_table(conn)
+    print("Created results table")
 
     # Get entries from db that need to be run through the model
     entries = get_entries(conn)
+    print("Got entries to be processed")
 
     # Run entries through the model (sentence by sentence? check this)
     #nlp = pipeline("ner", model=args.model, device=0)
     nlp = pipeline("ner", model=args.model) # if you are working locally, remove device=0
     for row in entries:
-        pmcid, methods = row
-        annotations = nlp(methods)
-        dict = {'n_male' : '', 'n_fem' : '', 'perc_male' : '', 'perc_fem' : '', 'sample' : ''}
-        for annotation in annotations:
-            dict[annotation["entity"]] = json.dumps(annotation["word"])
 
-        # get values to be added to the db 
-        values = list(dict.values())
-        values.insert(0,pmcid)
-        add_result(conn, values)
+        pmcid, methods = row
+        # Split methods section into sentences
+        sentences = sent_tokenize(methods)
+        # Establish array of tuples of results per sentence
+        results = []
+        index = 0
+        # Loop through each sentence
+        for sentence in sentences:
+            annotations = nlp(sentence)
+            dict = {'pmcid' : pmcid, 'sentence_index' : index, 'n_male' : None, 'n_fem' : None, 'perc_male' : None, 'perc_fem' : None, 'sample' : None}
+            for annotation in annotations:
+                dict[annotation["entity"]] = json.dumps(annotation["word"])
+            # If there were results from the model, add to results array
+            if not ((dict['n_male'] is None) and (dict['n_male'] is None) and (dict['n_fem'] is None) and (dict['perc_male'] is None) and (dict['perc_fem'] is None) and (dict['sample'] is None)):
+                values = list(dict.values())
+                results.append(tuple(values))
+            index += 1
+
+        add_result(conn, pmcid, results)
 
     conn.close()
 
