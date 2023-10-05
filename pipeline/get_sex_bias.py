@@ -58,6 +58,7 @@ def main():
     print(args)
     print('Loading the data...')
 
+    sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
     config_path = os.path.join(os.path.dirname(__file__), "../config", "config.yaml")
     config_all = yaml.safe_load(open(config_path))
 
