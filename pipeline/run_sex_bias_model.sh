@@ -27,6 +27,6 @@ SCRIPT_DIR="./pipeline/"
 cd $SCRIPT_DIR
 
 echo "$(timestamp) Running the model job"
-srun python$PYTHON_VERSION get_sex_bias.py --out ./output/model_output.json --model ./second_model/
+srun python$PYTHON_VERSION get_sex_bias.py --model ./second_model/
 
 echo "$(timestamp) Job done!"
