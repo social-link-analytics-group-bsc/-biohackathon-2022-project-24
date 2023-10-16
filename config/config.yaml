@@ -15,7 +15,9 @@ api_europepmc_params:
   # Used in previous script to be able to rerun the script without redl everything. Maybe still needed
   # For the new downloading script
   pmcid_human_file: ./data/pmcid_humans.txt
-  db_info_articles: ./data/db_info_articles.sqlite3
+  db_info_articles: ./data/db_info_articles_test.sqlite3
+  record_files: true
+  xml_origin: api # can be either 'api' if connect to the api or 'files' if use dl files
 
 
 search_params:
