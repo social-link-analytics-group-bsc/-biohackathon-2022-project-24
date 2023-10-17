@@ -49,7 +49,7 @@ def add_result(conn, pmcid, results):
     for row in results:
         cur.execute(SQL_QUERY, row)
 
-    SQL_QUERY = "INSERT INTO Checks (pmcid, results) VALUES (?, 1) ON CONFLICT (pmcid) DO UPDATE SET results = 1;"
+    SQL_QUERY = "INSERT OR REPLACE INTO Checks (pmcid, results) VALUES (?, 1);"
     cur.execute(SQL_QUERY, (pmcid,))
     conn.commit()
 
@@ -83,23 +83,30 @@ def main():
 
         pmcid, methods = row
         # Split methods section into sentences
-        sentences = sent_tokenize(methods)
-        # Establish array of tuples of results per sentence
-        results = []
-        index = 0
-        # Loop through each sentence
-        for sentence in sentences:
-            annotations = nlp(sentence)
-            dict = {'pmcid' : pmcid, 'sentence_index' : index, 'n_male' : None, 'n_fem' : None, 'perc_male' : None, 'perc_fem' : None, 'sample' : None}
-            for annotation in annotations:
-                dict[annotation["entity"]] = json.dumps(annotation["word"])
-            # If there were results from the model, add to results array
-            if not ((dict['n_male'] is None) and (dict['n_male'] is None) and (dict['n_fem'] is None) and (dict['perc_male'] is None) and (dict['perc_fem'] is None) and (dict['sample'] is None)):
-                values = list(dict.values())
-                results.append(tuple(values))
-            index += 1
+        
+        if methods is not None:
+            sentences = sent_tokenize(methods)
+            # Establish array of tuples of results per sentence
+            results = []
+            index = 0
+            # Loop through each sentence
+            for sentence in sentences:
+                # Truncate the sentence to the maximum length of 512 tokens
+                if len(sentence) > 512:
+                    sentence = sentence[:512]
+                annotations = nlp(sentence)
+                dict = {'pmcid' : pmcid, 'sentence_index' : index, 'n_male' : None, 'n_fem' : None, 'perc_male' : None, 'perc_fem' : None, 'sample' : None}
+                for annotation in annotations:
+                    dict[annotation["entity"]] = json.dumps(annotation["word"])
+                # If there were results from the model, add to results array
+                if not ((dict['n_male'] is None) and (dict['n_male'] is None) and (dict['n_fem'] is None) and (dict['perc_male'] is None) and (dict['perc_fem'] is None) and (dict['sample'] is None)):
+                    values = list(dict.values())
+                    results.append(tuple(values))
+                index += 1
 
-        add_result(conn, pmcid, results)
+            add_result(conn, pmcid, results)
+        else:
+            continue
 
     conn.close()
 
