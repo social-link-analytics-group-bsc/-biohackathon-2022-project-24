@@ -1,3 +1,4 @@
+from datetime import datetime
 from lxml import etree
 from utils.relevant_tags import value_sections
 
@@ -96,7 +97,15 @@ class XmlParser:
             year = pub_date_element.findtext("year")
             month = pub_date_element.findtext("month")
             day = pub_date_element.findtext("day")
-            return {"year": year, "month": month, "day": day}
+            if year and month and day:
+                # Convert year, month, and day to integers
+                year = int(year)
+                month = int(month)
+                day = int(day)
+                # Create a datetime object
+                publication_date = datetime(year, month, day)
+
+                return publication_date
 
     def copyright_info(self):
         copyright_xpath = ".//permissions/copyright-statement"
@@ -151,6 +160,7 @@ class XmlParser:
                 pass
             if funding_dict:
                 funding_info.append(funding_dict)
+
         return funding_info
 
     def sections(self):
@@ -169,30 +179,63 @@ class XmlParser:
                         dict_section[section] = section_text.replace('"', "'")
         if any(value is not None for value in dict_section.values()):
             return dict_section
-        
+
         return None  # Return None if no sections match the criteria
 
+
 class DynamicXmlParser(XmlParser):
+    """
+    A class for dynamically parsing XML documents, building on the functionality provided by XmlParser.
+
+    This class extends the XmlParser class and is designed to perform dynamic XML parsing,
+    where various methods are automatically called to extract data from the XML document.
+    The results are stored in a dictionary, and the status of each method is recorded
+    to determine if the extraction was successful.
+
+    Attributes:
+        data (dict): A dictionary to store the results of various extraction methods.
+        data_status (dict): A dictionary to store the status of each method,
+        indicating whether it succeeded or not.
+
+    Methods:
+        _get_the_parents_methods: Internal method to retrieve the methods from the parent class (XmlParser).
+        _collect_results: Internal method to call each method and store the results in the data dictionary.
+        _check_methods: Internal method to check the status of each method and populate the data_status dictionary.
+
+    Example Usage:
+        # Create a DynamicXmlParser instance with an XML document
+        parser = DynamicXmlParser(xml_document)
+
+        # Access the extracted data and its status
+        data = parser.data
+        status = parser.data_status
+    """
+
     def __init__(self, xml_document):
         super().__init__(xml_document)
         self.data = {}  # Initialize a dictionary to store method results
         self.data_status = {}  # Initialize a dict to store the method status
         # Get the parents methods
-        self.get_the_parents_methods()
+        self._get_the_parents_methods()
         # Collect the results
-        self.collect_results()
+        self._collect_results()
         # Populate the checking status
-        self.check_methods()
+        self._check_methods()
 
-    def get_the_parents_methods(self):
-
+    def _get_the_parents_methods(self):
+        """
+        Retrieves the methods from the parent class, XmlParser.
+        """
         self.parent_class_methods = [
             func
             for func in dir(XmlParser)
             if callable(getattr(XmlParser, func)) and not func.startswith("__")
         ]
 
-    def collect_results(self):
+    def _collect_results(self):
+        """
+        Calls the methods and stores the results in the data dictionary.
+        """
         try:
             # Call each method and store the result in the data dictionary
             for method_name in self.parent_class_methods:
@@ -205,12 +248,12 @@ class DynamicXmlParser(XmlParser):
                     )
                 self.data[method_name] = result
         except Exception as e:
-            print(e)
             raise e
 
-
-    def check_methods(self):
-        # Check which methods returned False and create a dynamic dictionary
+    def _check_methods(self):
+        """
+        Checks the status of each method's execution and populates the data_status dictionary.
+        """
         for method_name in self.data:
             result = self.data[method_name]
             if result is None or (isinstance(result, (str, list)) and not result):

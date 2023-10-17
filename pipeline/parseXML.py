@@ -100,7 +100,7 @@ def api_search(pmcid):
         return pmcid, r.status_code, None
 
 
-def getting_pmcids(xml_origin, pmcids_file_list, path_xml, conn, table_check, limit):
+def getting_pmcids(xml_origin, pmcids_file_list, path_xml, conn, table_status, limit):
     def get_list_humans(file_location):
         """
         Get the list of pmcids from a list file
@@ -125,13 +125,13 @@ def getting_pmcids(xml_origin, pmcids_file_list, path_xml, conn, table_check, li
 
         return pmcids
 
-    def get_pmcids_in_db(conn, table_check):
+    def get_pmcids_in_db(conn, table_status):
         """
         Get the already recorded pmcids from db
         """
         c = conn.cursor()
         # Execute a SELECT query to retrieve the pmcid values
-        sql_query = f'SELECT pmcid FROM "{table_check}"'
+        sql_query = f'SELECT pmcid FROM "{table_status}"'
         c.execute(sql_query)
 
         # Fetch all the pmcid values and store them in a list
@@ -149,7 +149,7 @@ def getting_pmcids(xml_origin, pmcids_file_list, path_xml, conn, table_check, li
     else:
         raise Exception("Need to be either 'file' with db path or 'api'")
 
-    parsed_pmcids = get_pmcids_in_db(conn, table_check=table_check)
+    parsed_pmcids = get_pmcids_in_db(conn, table_status=table_status)
     ids_to_dl = list(set(original_list).difference(set(parsed_pmcids)))
     logger.info(f"Len of complete list of human pmcid: {len(original_list)}")
     logger.info(f"Len of already done species: {len(parsed_pmcids)}")
@@ -181,35 +181,54 @@ def processing_response(
     folder_path,
     record_file,
 ):
-    # def _setup_dict_result(fields):
-    #     return {k: None for k in fields}
-
-    # Check if the status code is 200.
-    # If not, just ignore it to be able to keep the pmcid for future tries.
-    # check_results = _setup_dict_result(check_fields)
-    # sections_results = _setup_dict_result(sections_fields)
-    # journal_metadata_results = _setup_dict_result(journal_metadata_fields)
-    # article_metadata_results = _setup_dict_result(article_metadata_fields)
+    status = {}
+    sections = {}
+    metadata = {}
+    status["api_response"] = api_response
     if api_response == 200:
-        print(pmcid)
-        xml_data = DynamicXmlParser(response)                
-        print(xml_data.data)
+        xml_data = DynamicXmlParser(response)
         # Check if the article-type attribute exists
-        if xml_data.data['article_type'] == 'research-article':
+        status["article_type"] = xml_data.data["article_type"]
+        if status["article_type"] == "research-article":
+            # logger.info(f"{pmcid}: {xml_data.data_status}")
             # Only process the research-article type and the others record them in the
             # corresponding table to have track of the amount of different types
             # Record file in case the parser is not great and we need to
             # Check again. Should be removed as soon we are sure for the data we want.
-            check_file = write_file(
+            if record_file is True:
+                check_file = write_file(
                     xml_file=response,
                     pmcid=pmcid,
                     path=folder_path,
                     record_file=record_file,
                 )
-                
-            xml_data.data_status['recorded_file'] = check_file
-            return xml_data
-    return
+            else:
+                check_file = False
+
+            # update the status dictionary
+            status.update(xml_data.data_status)
+            # Record if the xml has been recorded in file or not
+            status["recorded_file"] = check_file
+            # Creat the sections dictionary
+            try:
+                sections.update(xml_data.data["sections"])
+            except (KeyError, TypeError):
+                pass
+            # Choose to put the abstract in section as it is long text
+            try:
+                sections["abstract"] = xml_data.data["abstract"]
+            except (KeyError, TypeError):
+                pass
+            for k in ["sections", "article_type", "abstract"]:
+                try:
+                    del xml_data.data[k]
+                except (KeyError, TypeError):
+                    pass
+            metadata.update(xml_data.data)
+    # Return three dictionaries, the sections the metadata and the status of the collection
+    # To record in three different tables later on
+    return status, sections, metadata
+
 
 def main():
     pmcid_human_file = config_all["api_europepmc_params"]["pmcid_human_file"]
@@ -224,40 +243,9 @@ def main():
         record_file = False
 
     # FIXME: Move these variables in config file or in a class data
+    table_status = "status"
     table_sections = "sections"
-    table_journal_metadata = "journal_metadata"
-    table_article_metadata = "article_metadata"
-    table_meshtags = "mesh"
-    table_check = "check"
-
-    section_fields = ["intro", "methods", "results", "discussion"]
-    journal_metadata_fields = [
-        "issn_ppub",
-        "issn_epub",
-        "publisher_name",
-        "title",
-        "year",
-        "publication_type",
-        "pubmed_id",
-        "doi_id",
-        "pmc_id",
-        "journal_title",
-        "ISSN",
-        "abstract",
-        "ISO_abbreviation",
-    ]
-    article_metadata_fields = []
-    meshtags_fields = []
-    check_fields = [
-        "pmcid",
-        "api_response",
-        "article_type",
-        "journal_metadata",
-        "article_metadata",
-        "sections",
-        "meshtags",
-        "recorded_file",
-    ]
+    table_metadata = "article_metadata"
 
     # Connect to the db and ensure the table exists
 
@@ -265,10 +253,8 @@ def main():
     create_tables(
         conn,
         table_sections=table_sections,
-        table_check=table_check,
-        table_article_metadata=table_article_metadata,
-        table_journal_metadata=table_journal_metadata,
-        table_meshtags=table_meshtags,
+        table_status=table_status,
+        table_metadata=table_metadata,
     )
 
     ids_to_dl = getting_pmcids(
@@ -276,7 +262,7 @@ def main():
         pmcids_file_list=pmcid_human_file,
         path_xml=path_xml,
         conn=conn,
-        table_check=table_check,
+        table_status=table_status,
         limit=None,
     )
     try:
@@ -291,24 +277,21 @@ def main():
         pbar = tqdm(total=len(ids_to_dl))  # Init pbar
         for future in concurrent.futures.as_completed(futures):
             pmcid, api_response, response = future.result()
-            xml_data = processing_response(
+            status, sections, metadata = processing_response(
                 pmcid=pmcid,
                 api_response=api_response,
                 response=response,
                 folder_path=path_xml,
                 record_file=record_file,
             )
-            # if xml_data:
-            #     print(xml_data.data_status)
-            # # Update the different tables
-            # commit_to_database(conn, pmcid, table_sections, sections)
-            # commit_to_database(
-            #     conn, pmcid, table_journal_metadata, journal_metadata
-            # )
-            # commit_to_database(
-            #     conn, pmcid, table_article_metadata, article_metadata
-            # )
-            # commit_to_database(conn, pmcid, table_meshtags, meshtags)
+            # Update the different tables
+            for table, data in [
+                (table_status, status),
+                (table_sections, sections),
+                (table_metadata, metadata),
+            ]:
+                if data:
+                    commit_to_database(conn, pmcid, table, data)
             pbar.update(n=1)
             exception = future.exception()
             if exception:
@@ -318,19 +301,9 @@ def main():
                 raise (exception)
 
     except Exception as e:
-        logger.error(
-            f"An unexpected exception occurred: {e}. Closing the db connection and exiting."
-        )
+        logger.error(f"An unexpected exception occurred: {e}. \nLast PMCID: {pmcid}")
         raise e  # Re-raise the exception for further handling if needed
-    # finally:
-    #     for k in count_elements:
-    #         count_elements[k] = dict(
-    #             sorted(
-    #                 count_elements[k].items(), key=lambda item: item[1], reverse=True
-    #             )
-    #         )
-    #     print(count_elements)
-    #     print(check_results)
+    finally:
         executor.shutdown()
 
 
