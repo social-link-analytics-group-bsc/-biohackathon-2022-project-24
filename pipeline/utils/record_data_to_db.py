@@ -73,3 +73,44 @@ def commit_to_database(conn, pmcid, table, results):
     c = conn.cursor()
     c.execute(sql_query, tuple(results.values()))
     conn.commit()
+
+
+def analyze_database(conn, table):
+    # Get the list of columns from the status table
+    c = conn.cursor()
+    c.execute(f"PRAGMA table_info({table});")
+    columns_info = c.fetchall()
+
+    # Extract the column names excluding 'pmcid' and 'api_response'
+    columns_to_analyze = [
+        column[1]
+        for column in columns_info
+        if column[1] not in ("pmcid", "api_response")
+    ]
+
+    results = {}
+
+    # Analyze each column
+    for column in columns_to_analyze:
+        # Query the counts of 1, 0, and NULL for the column
+        query = f"""
+            SELECT
+                SUM(CASE WHEN "{column}" = 1 THEN 1 ELSE 0 END) as ones,
+                SUM(CASE WHEN "{column}" = 0 THEN 1 ELSE 0 END) as zeros,
+                SUM(CASE WHEN "{column}" IS NULL THEN 1 ELSE 0 END) as nulls
+            FROM status;
+        """
+        c.execute(query)
+        row = c.fetchone()
+        ones, zeros, nulls = row
+        results[column] = {"Ones": ones, "Zeros": zeros, "NULLs": nulls}
+
+    # Count distinct api_response values
+    c.execute("SELECT COUNT(DISTINCT api_response) FROM status;")
+    distinct_api_response_count = c.fetchone()[0]
+    results["Distinct_api_response"] = distinct_api_response_count
+
+    # Close the database connection
+    conn.close()
+
+    return results

@@ -14,7 +14,7 @@ from tqdm import tqdm
 import time
 import urllib3.exceptions
 from utils.retrieve_data_from_xml import DynamicXmlParser
-from utils.record_data_to_db import create_tables, commit_to_database
+from utils.record_data_to_db import create_tables, commit_to_database, analyze_database
 
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
@@ -206,6 +206,7 @@ def processing_response(
                 check_file = False
 
             # update the status dictionary
+            # print(xml_data.data_status)
             status.update(xml_data.data_status)
             # Record if the xml has been recorded in file or not
             status["recorded_file"] = check_file
@@ -304,6 +305,13 @@ def main():
         logger.error(f"An unexpected exception occurred: {e}. \nLast PMCID: {pmcid}")
         raise e  # Re-raise the exception for further handling if needed
     finally:
+        status_results = analyze_database(conn, table_status)
+        for k in status_results:
+            try:
+                print(k, status_results[k]['Ones'])
+            except TypeError:  # for the api_results
+                print(k, status_results[k])
+                
         executor.shutdown()
 
 

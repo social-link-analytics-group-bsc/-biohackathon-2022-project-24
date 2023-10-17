@@ -14,7 +14,7 @@ class XmlParser:
 
     def abstract(self):
         # Define the XPath expression to find abstract text with sections
-        xpath_expression_with_sec = ".//front/abstract/sec"
+        xpath_expression_with_sec = ".//abstract/sec"
 
         # Try to find the abstract element with sections
         abstract_elements = self.xml_document.findall(xpath_expression_with_sec)
@@ -28,7 +28,7 @@ class XmlParser:
             return abstract_text
 
         # If no abstracts with sections are found, try to find abstracts without sections
-        xpath_expression_no_sec = ".//front/abstract"
+        xpath_expression_no_sec = ".//abstract"
         abstract_elements = self.xml_document.findall(xpath_expression_no_sec)
 
         abstract_elements = [el.text for el in abstract_elements if el.text is not None]
@@ -40,7 +40,7 @@ class XmlParser:
             return abstract_text
 
         # If no abstracts with sections are found, try to find abstracts without sections
-        xpath_expression_no_sec = ".//front/abstract/p"
+        xpath_expression_no_sec = ".//abstract/p"
         abstract_elements = self.xml_document.findall(xpath_expression_no_sec)
 
         abstract_elements = [el.text for el in abstract_elements if el.text is not None]
@@ -180,7 +180,7 @@ class XmlParser:
         if any(value is not None for value in dict_section.values()):
             return dict_section
 
-        return None  # Return None if no sections match the criteria
+        return dict_section  # Return None if no sections match the criteria
 
 
 class DynamicXmlParser(XmlParser):
@@ -265,5 +265,7 @@ class DynamicXmlParser(XmlParser):
                             self.data_status[k] = True
                         else:
                             self.data_status[k] = False
+                    # To avoid having the parent key recorded
+                    del result
                 else:
                     self.data_status[method_name] = True
