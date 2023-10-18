@@ -180,6 +180,7 @@ def processing_response(
     response,
     folder_path,
     record_file,
+    xml_origin
 ):
     status = {}
     sections = {}
@@ -189,6 +190,8 @@ def processing_response(
         xml_data = DynamicXmlParser(response)
         # Check if the article-type attribute exists
         status["article_type"] = xml_data.data["article_type"]
+        if xml_origin == "files": 
+            check_file = True
         if status["article_type"] == "research-article":
             # logger.info(f"{pmcid}: {xml_data.data_status}")
             # Only process the research-article type and the others record them in the
@@ -202,11 +205,13 @@ def processing_response(
                     path=folder_path,
                     record_file=record_file,
                 )
-            else:
-                check_file = False
 
             # update the status dictionary
             # print(xml_data.data_status)
+            try:
+                del xml_data.data_status['article_type']
+            except (KeyError, TypeError):
+                pass
             status.update(xml_data.data_status)
             # Record if the xml has been recorded in file or not
             status["recorded_file"] = check_file
@@ -284,6 +289,7 @@ def main():
                 response=response,
                 folder_path=path_xml,
                 record_file=record_file,
+                xml_origin=xml_origin
             )
             # Update the different tables
             for table, data in [
@@ -308,10 +314,13 @@ def main():
         status_results = analyze_database(conn, table_status)
         for k in status_results:
             try:
-                print(k, status_results[k]['Ones'])
-            except TypeError:  # for the api_results
-                print(k, status_results[k])
-                
+                logger.info(f"{k}: \n\t\tTotal: {status_results[k]['recorded']} - Proportion: {status_results[k]['proportion']}")
+            except KeyError:  # for the api_results
+               api_response = status_results['distinct_api_response']
+               
+               logger.info(f'API response code:')
+               for k in api_response:
+                   logger.info(f"\t\t{k}: Total: {api_response[k]}")
         executor.shutdown()
 
 

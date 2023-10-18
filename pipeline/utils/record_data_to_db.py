@@ -103,12 +103,19 @@ def analyze_database(conn, table):
         c.execute(query)
         row = c.fetchone()
         ones, zeros, nulls = row
-        results[column] = {"Ones": ones, "Zeros": zeros, "NULLs": nulls}
+        try:
+            proportion = round(ones/(ones+zeros+nulls), 2)
+        except ZeroDivisionError:
+            proportion = 0
+        results[column] = {"recorded": ones, "not recorded": zeros, "NULLs": nulls, 'proportion': proportion}
 
     # Count distinct api_response values
-    c.execute("SELECT COUNT(DISTINCT api_response) FROM status;")
-    distinct_api_response_count = c.fetchone()[0]
-    results["Distinct_api_response"] = distinct_api_response_count
+    c.execute("SELECT api_response, COUNT(api_response) FROM status GROUP BY api_response;")
+    distinct_api_response_count = c.fetchall()
+    # for code in distinct_api_response_count:
+    #     print(code)
+    distinct_api_response_counts = {code: count for code, count in distinct_api_response_count}
+    results["distinct_api_response"] = distinct_api_response_counts
 
     # Close the database connection
     conn.close()
