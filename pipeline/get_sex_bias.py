@@ -19,17 +19,14 @@ def parsing_arguments(parser):
     return parser
 
 # Method for getting database entries that still need to be run through the model
-def get_entries(conn):
+def get_entries(conn, cur):
     SQL_QUERY = 'SELECT sections.pmcid, sections.METHODS FROM sections LEFT JOIN Checks ON sections.pmcid = status.pmcid WHERE status.results IS NULL;'
-    cur = conn.cursor()
     cur.execute(SQL_QUERY)
-    conn.close()
     return cur.fetchall()
 
 # Create table to record model results in (pmcid, n_fem, n_male, per_fem, perc_male, sample)
-def create_results_table(conn):
-    c = conn.cursor()
-    c.execute(
+def create_results_table(conn, cur):
+    cur.execute(
         """CREATE TABLE IF NOT EXISTS "Results" (
                 "pmcid"	TEXT NOT NULL,
                 "sentence_index"	INTEGER,
@@ -42,10 +39,9 @@ def create_results_table(conn):
             )"""
         )
     conn.commit()
-    conn.close()
 
 # Add new row to results table
-def add_result(conn, pmcid, results):
+def add_result(conn, cur, pmcid, results):
 
     pmcid_array = tuple([t[0] for t in results])
     # sentence_index_array = tuple([t[1] for t in results])
@@ -55,7 +51,6 @@ def add_result(conn, pmcid, results):
     # perc_fem_array = tuple([t[5] for t in results])
     # sample_array = tuple([t[6] for t in results])
 
-    cur = conn.cursor()
     SQL_QUERY = "INSERT INTO Results (pmcid, sentence_index, n_male, n_fem, perc_male, perc_fem, sample) VALUES  (?, ?, ?, ?, ?, ?, ?)"
     cur.executemany(SQL_QUERY, results)
     # for row in results:
@@ -65,7 +60,6 @@ def add_result(conn, pmcid, results):
     cur.executemany(SQL_QUERY, pmcid_array)
     #cur.execute(SQL_QUERY, (pmcid,))
     conn.commit()
-    conn.close()
 
 def main():
     parser = argparse.ArgumentParser()
@@ -81,13 +75,14 @@ def main():
     # Connect to the SQLite database
     DB_FILE = config_all["api_europepmc_params"]["db_info_articles"]
     conn = sqlite3.connect(DB_FILE)
+    cur = conn.cursor()
 
     # Create results table (if not already created)
-    create_results_table(conn)
+    create_results_table(conn, cur)
     print("Created results table")
 
     # Get entries from db that need to be run through the model
-    entries = get_entries(conn)
+    entries = get_entries(conn, cur)
     print("Got entries to be processed")
 
     # Run entries through the model (sentence by sentence? check this)
@@ -124,13 +119,13 @@ def main():
 
             # add results in batches
             if len(results) >= batch_size:
-                add_result(conn, pmcid, results)
+                add_result(conn, cur, pmcid, results)
                 results = []
-            counter += 1
+
         else:
             continue
 
-    #conn.close()
+    conn.close()
 
 
 if __name__ == "__main__":
