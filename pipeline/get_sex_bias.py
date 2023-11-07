@@ -20,9 +20,10 @@ def parsing_arguments(parser):
 
 # Method for getting database entries that still need to be run through the model
 def get_entries(conn):
-    SQL_QUERY = 'SELECT Main.pmcid, Main.methods FROM Main LEFT JOIN Checks ON Main.pmcid = Checks.pmcid WHERE Checks.results IS NULL;'
+    SQL_QUERY = 'SELECT sections.pmcid, sections.METHODS FROM sections LEFT JOIN Checks ON sections.pmcid = status.pmcid WHERE status.results IS NULL;'
     cur = conn.cursor()
     cur.execute(SQL_QUERY)
+    conn.close()
     return cur.fetchall()
 
 # Create table to record model results in (pmcid, n_fem, n_male, per_fem, perc_male, sample)
@@ -37,10 +38,11 @@ def create_results_table(conn):
                 "perc_fem"	TEXT,
                 "perc_male"	TEXT,
                 "sample"	TEXT,
-                FOREIGN KEY ("pmcid") REFERENCES Main("pmcid")
+                FOREIGN KEY ("pmcid") REFERENCES sections("pmcid")
             )"""
         )
     conn.commit()
+    conn.close()
 
 # Add new row to results table
 def add_result(conn, pmcid, results):
@@ -49,9 +51,10 @@ def add_result(conn, pmcid, results):
     for row in results:
         cur.execute(SQL_QUERY, row)
 
-    SQL_QUERY = "INSERT OR REPLACE INTO Checks (pmcid, results) VALUES (?, 1);"
+    SQL_QUERY = "INSERT OR REPLACE INTO status (pmcid, results) VALUES (?, 1);"
     cur.execute(SQL_QUERY, (pmcid,))
     conn.commit()
+    conn.close()
 
 def main():
     parser = argparse.ArgumentParser()
@@ -108,7 +111,7 @@ def main():
         else:
             continue
 
-    conn.close()
+    #conn.close()
 
 
 if __name__ == "__main__":
