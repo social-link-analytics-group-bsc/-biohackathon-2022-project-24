@@ -20,7 +20,7 @@ def parsing_arguments(parser):
 
 # Method for getting database entries that still need to be run through the model
 def get_entries(conn, cur):
-    SQL_QUERY = 'SELECT sections.pmcid, sections.METHODS FROM sections LEFT JOIN Checks ON sections.pmcid = status.pmcid WHERE status.results IS NULL;'
+    SQL_QUERY = 'SELECT sections.pmcid, sections.METHODS FROM sections LEFT JOIN status ON sections.pmcid = status.pmcid WHERE status.results IS NULL;'
     cur.execute(SQL_QUERY)
     return cur.fetchall()
 
@@ -44,12 +44,6 @@ def create_results_table(conn, cur):
 def add_result(conn, cur, pmcid, results):
 
     pmcid_array = tuple([t[0] for t in results])
-    # sentence_index_array = tuple([t[1] for t in results])
-    # n_male_array = tuple([t[2] for t in results])
-    # n_fem_array = tuple([t[3] for t in results])
-    # perc_male_array = tuple([t[4] for t in results])
-    # perc_fem_array = tuple([t[5] for t in results])
-    # sample_array = tuple([t[6] for t in results])
 
     SQL_QUERY = "INSERT INTO Results (pmcid, sentence_index, n_male, n_fem, perc_male, perc_fem, sample) VALUES  (?, ?, ?, ?, ?, ?, ?)"
     cur.executemany(SQL_QUERY, results)
@@ -89,7 +83,7 @@ def main():
     #nlp = pipeline("ner", model=args.model, device=0)
     nlp = pipeline("ner", model=args.model) # if you are working locally, remove device=0
 
-    batch_size = 100
+    batch_size = 10
     results = []
 
     for row in entries:
