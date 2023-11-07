@@ -46,13 +46,24 @@ def create_results_table(conn):
 
 # Add new row to results table
 def add_result(conn, pmcid, results):
+
+    pmcid_array = tuple([t[0] for t in results])
+    # sentence_index_array = tuple([t[1] for t in results])
+    # n_male_array = tuple([t[2] for t in results])
+    # n_fem_array = tuple([t[3] for t in results])
+    # perc_male_array = tuple([t[4] for t in results])
+    # perc_fem_array = tuple([t[5] for t in results])
+    # sample_array = tuple([t[6] for t in results])
+
     cur = conn.cursor()
     SQL_QUERY = "INSERT INTO Results (pmcid, sentence_index, n_male, n_fem, perc_male, perc_fem, sample) VALUES  (?, ?, ?, ?, ?, ?, ?)"
-    for row in results:
-        cur.execute(SQL_QUERY, row)
+    cur.executemany(SQL_QUERY, results)
+    # for row in results:
+    #     cur.execute(SQL_QUERY, row)
 
     SQL_QUERY = "INSERT OR REPLACE INTO status (pmcid, results) VALUES (?, 1);"
-    cur.execute(SQL_QUERY, (pmcid,))
+    cur.executemany(SQL_QUERY, pmcid_array)
+    #cur.execute(SQL_QUERY, (pmcid,))
     conn.commit()
     conn.close()
 
@@ -82,6 +93,10 @@ def main():
     # Run entries through the model (sentence by sentence? check this)
     #nlp = pipeline("ner", model=args.model, device=0)
     nlp = pipeline("ner", model=args.model) # if you are working locally, remove device=0
+
+    batch_size = 100
+    results = []
+
     for row in entries:
 
         pmcid, methods = row
@@ -90,7 +105,7 @@ def main():
         if methods is not None:
             sentences = sent_tokenize(methods)
             # Establish array of tuples of results per sentence
-            results = []
+            #results = []
             index = 0
             # Loop through each sentence
             for sentence in sentences:
@@ -107,7 +122,11 @@ def main():
                     results.append(tuple(values))
                 index += 1
 
-            add_result(conn, pmcid, results)
+            # add results in batches
+            if len(results) >= batch_size:
+                add_result(conn, pmcid, results)
+                results = []
+            counter += 1
         else:
             continue
 
