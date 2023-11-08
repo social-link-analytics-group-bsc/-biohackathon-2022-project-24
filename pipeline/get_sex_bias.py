@@ -9,7 +9,6 @@ import sys
 import os
 import yaml
 import nltk
-nltk.download('punkt')  # Download the sentence tokenizer model (if not already downloaded)
 from nltk.tokenize import sent_tokenize
 
 
@@ -40,31 +39,17 @@ def create_results_table(conn, cur):
         )
     conn.commit()
 
-# Create table to record model results in (pmcid, n_fem, n_male, per_fem, perc_male, sample)
-def add_model_results_column(conn, cur):
-    cur.execute(
-        """IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'status' AND COLUMN_NAME = 'model_results')
-            BEGIN
-                ALTER TABLE status
-                ADD model_results BIT;
-            END;
-        """
-    )
-    conn.commit()
-
 # Add new row to results table
 def add_result(conn, cur, pmcid, results):
 
-    pmcid_array = tuple([t[0] for t in results])
-
     SQL_QUERY = "INSERT INTO Results (pmcid, sentence_index, n_male, n_fem, perc_male, perc_fem, sample) VALUES  (?, ?, ?, ?, ?, ?, ?)"
-    cur.executemany(SQL_QUERY, results)
-    # for row in results:
-    #     cur.execute(SQL_QUERY, row)
+    for row in results:
+        cur.execute(SQL_QUERY, row)
 
     SQL_QUERY = "INSERT OR REPLACE INTO status (pmcid, model_results) VALUES (?, 1);"
-    cur.executemany(SQL_QUERY, pmcid_array)
-    #cur.execute(SQL_QUERY, (pmcid,))
+    for row in results:
+        # row[0] is pmcid
+        cur.execute(SQL_QUERY, (row[0],))
     conn.commit()
 
 def main():
@@ -83,17 +68,13 @@ def main():
     conn = sqlite3.connect(DB_FILE)
     cur = conn.cursor()
 
-    # Add model results column to status table (if not already created)
-    add_model_results_column(conn, cur)
-    print("Added model results column")
-
     # Create results table (if not already created)
     create_results_table(conn, cur)
     print("Created results table")
 
     # Get entries from db that need to be run through the model
     entries = get_entries(conn, cur)
-    print("Got entries to be processed")
+    print("Got entries to be processed: ", len(entries))
 
     # Run entries through the model (sentence by sentence? check this)
     #nlp = pipeline("ner", model=args.model, device=0)
