@@ -17,10 +17,10 @@ def parsing_arguments(parser):
     parser.add_argument("--model", type=str, default='output/bert-base-uncased-en/sbe.py_8_0.00005_date_22-11-10_time_14-55-26',
                         help='Pretrained model to find the numbers')
     return parser
-
+ 
 # Method for getting database entries that still need to be run through the model
 def get_entries(conn, cur):
-    SQL_QUERY = 'SELECT sections.pmcid, sections.METHODS FROM sections LEFT JOIN status ON sections.pmcid = status.pmcid WHERE status.results IS NULL;'
+    SQL_QUERY = 'SELECT sections.pmcid, sections.METHODS FROM sections LEFT JOIN status ON sections.pmcid = status.pmcid WHERE status.model_results IS NULL;'
     cur.execute(SQL_QUERY)
     return cur.fetchall()
 
@@ -40,6 +40,18 @@ def create_results_table(conn, cur):
         )
     conn.commit()
 
+# Create table to record model results in (pmcid, n_fem, n_male, per_fem, perc_male, sample)
+def add_model_results_column(conn, cur):
+    cur.execute(
+        """IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'status' AND COLUMN_NAME = 'model_results')
+            BEGIN
+                ALTER TABLE status
+                ADD model_results BIT;
+            END;
+        """
+    )
+    conn.commit()
+
 # Add new row to results table
 def add_result(conn, cur, pmcid, results):
 
@@ -50,7 +62,7 @@ def add_result(conn, cur, pmcid, results):
     # for row in results:
     #     cur.execute(SQL_QUERY, row)
 
-    SQL_QUERY = "INSERT OR REPLACE INTO status (pmcid, results) VALUES (?, 1);"
+    SQL_QUERY = "INSERT OR REPLACE INTO status (pmcid, model_results) VALUES (?, 1);"
     cur.executemany(SQL_QUERY, pmcid_array)
     #cur.execute(SQL_QUERY, (pmcid,))
     conn.commit()
@@ -70,6 +82,10 @@ def main():
     DB_FILE = config_all["api_europepmc_params"]["db_info_articles"]
     conn = sqlite3.connect(DB_FILE)
     cur = conn.cursor()
+
+    # Add model results column to status table (if not already created)
+    add_model_results_column(conn, cur)
+    print("Added model results column")
 
     # Create results table (if not already created)
     create_results_table(conn, cur)
