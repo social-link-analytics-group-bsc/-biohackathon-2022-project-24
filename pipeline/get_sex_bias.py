@@ -20,15 +20,18 @@ def parsing_arguments(parser):
  
 # Method for getting database entries that still need to be run through the model
 def get_entries(conn, cur):
+    print("Getting entries...")
     SQL_QUERY = 'SELECT CASE WHEN COUNT(*) > 0 THEN 0 ELSE 1 END as IsEmpty FROM Results;'
     cur.execute(SQL_QUERY)
     result = cur.fetchone()
 
     # If results table is empty, start with all records
     if result[0]:
+        print("Results is empty, start from the beginning.")
         SQL_QUERY = 'SELECT sections.pmcid, sections.METHODS FROM sections;'
         cur.execute(SQL_QUERY)
     else:
+        print("Results is not empty, fetch methods still needing to be processed.")
         SQL_QUERY = 'SELECT sections.pmcid, sections.METHODS FROM sections LEFT JOIN status ON sections.pmcid = status.pmcid WHERE status.model_results IS NULL;'
         cur.execute(SQL_QUERY)
     return cur.fetchall()
@@ -59,8 +62,7 @@ def add_result(conn, cur, pmcid, results):
 
 def update_status(conn, cur, pmcid):
     SQL_QUERY = "UPDATE status SET model_results = 1 WHERE pmcid = ?;"
-    query_input = (pmcid)
-    cur.execute(SQL_QUERY, query_input)
+    cur.execute(SQL_QUERY, (pmcid,))
     conn.commit()
 
 def run_model_on_entry(row, nlp):
@@ -113,16 +115,17 @@ def main():
     print("Got entries to be processed: ", len(entries))
 
     # Run entries through the model (sentence by sentence? check this)
-    #nlp = pipeline("ner", model=args.model, device=0)
-    nlp = pipeline("ner", model=args.model) # if you are working locally, remove device=0
+    nlp = pipeline("ner", model=args.model, device=0)
+    #nlp = pipeline("ner", model=args.model) # if you are working locally, remove device=0
 
+    print("Running the model on entries with multiple threads...")
     executor = concurrent.futures.ThreadPoolExecutor()
     futures = [
         executor.submit(run_model_on_entry, row, nlp) for row in entries
     ]
 
     pbar = tqdm(total=len(entries))
-    for future in concurrent.futures.as_completed(futures)[0:20]:
+    for future in concurrent.futures.as_completed(futures):
         pmcid, results = future.result()
         if results:
             add_result(conn, cur, pmcid, results)
