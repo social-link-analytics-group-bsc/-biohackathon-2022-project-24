@@ -7,7 +7,11 @@ class XmlParser:
     def __init__(self, xml_document):
         if isinstance(xml_document, str) or isinstance(xml_document, bytes):
             # Parse the XML string into an Element object
-            self.xml_document = etree.fromstring(xml_document)
+            try:
+                self.xml_document = etree.fromstring(xml_document)
+            except etree.XMLSyntaxError:
+                self.xml_document = None
+                raise Exception
         else:
             # If it's already an Element object, use it directly
             self.xml_document = xml_document
@@ -219,15 +223,20 @@ class DynamicXmlParser(XmlParser):
     """
 
     def __init__(self, xml_document):
-        super().__init__(xml_document)
         self.data = {}  # Initialize a dictionary to store method results
         self.data_status = {}  # Initialize a dict to store the method status
-        # Get the parents methods
-        self._get_the_parents_methods()
-        # Collect the results
-        self._collect_results()
-        # Populate the checking status
-        self._check_methods()
+        try:
+            super().__init__(xml_document)
+            # Get the parents methods
+            self._get_the_parents_methods()
+            # Collect the results
+            self._collect_results()
+            # Populate the checking status
+            self._check_methods()
+        # In case empty document. Just return empty result
+        except Exception:
+            pass
+
 
     def _get_the_parents_methods(self):
         """

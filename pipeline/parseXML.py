@@ -189,7 +189,11 @@ def processing_response(
     if api_response == 200:
         xml_data = DynamicXmlParser(response)
         # Check if the article-type attribute exists
-        status["article_type"] = xml_data.data["article_type"]
+        try:
+            status["article_type"] = xml_data.data["article_type"]
+        except KeyError:  # Means an empty document
+            status['article_type'] = 'Empty document'
+
         if xml_origin == "files": 
             check_file = True
         if status["article_type"] == "research-article":
@@ -252,7 +256,7 @@ def main():
     table_status = "status"
     table_sections = "sections"
     table_metadata = "article_metadata"
-
+    logging.info(f'Getting the files from: {path_xml}')
     # Connect to the db and ensure the table exists
 
     conn = sqlite3.connect(DB_FILE)
@@ -311,16 +315,21 @@ def main():
         logger.error(f"An unexpected exception occurred: {e}. \nLast PMCID: {pmcid}")
         raise e  # Re-raise the exception for further handling if needed
     finally:
-        status_results = analyze_database(conn, table_status)
-        for k in status_results:
-            try:
-                logger.info(f"{k}: \n\t\tTotal: {status_results[k]['recorded']} - Proportion: {status_results[k]['proportion']}")
-            except KeyError:  # for the api_results
-               api_response = status_results['distinct_api_response']
-               
-               logger.info(f'API response code:')
-               for k in api_response:
-                   logger.info(f"\t\t{k}: Total: {api_response[k]}")
+        try:
+            status_results = analyze_database(conn, table_status)
+            for k in status_results:
+                try:
+                    logger.info(f"{k}: \n\t\tTotal: {status_results[k]['recorded']} - Proportion: {status_results[k]['proportion']}")
+                except KeyError:  # for the api_results
+                   api_response = status_results['distinct_api_response']
+                   
+                   logger.info(f'API response code:')
+                   for k in api_response:
+                       logger.info(f"\t\t{k}: Total: {api_response[k]}")
+        # Added when rerun to do some test without the full db
+        except sqlite3.OperationalError:
+            pass
+
         executor.shutdown()
 
 
