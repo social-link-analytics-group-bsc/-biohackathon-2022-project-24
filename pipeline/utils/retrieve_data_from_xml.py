@@ -58,7 +58,14 @@ class XmlParser:
     def article_title(self):
         title_xpath = ".//article-title"
         title_element = self.xml_document.find(title_xpath)
-        title = title_element.text if title_element is not None else None
+
+        # Check if the title element is not None
+        if title_element is not None:
+            # Get the text content of the title element
+            title = title_element.text.strip() if title_element.text is not None else None
+        else:
+            title = None
+        
         return title
 
     def authors(self):
