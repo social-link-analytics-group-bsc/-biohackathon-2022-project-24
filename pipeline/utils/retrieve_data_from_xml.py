@@ -10,8 +10,8 @@ class XmlParser:
             # try:
             self.xml_document = etree.fromstring(xml_document)
             # except etree.XMLSyntaxError:
-                # self.xml_document = None
-                # raise Exception
+            # self.xml_document = None
+            # raise Exception
         else:
             # If it's already an Element object, use it directly
             self.xml_document = xml_document
@@ -19,7 +19,9 @@ class XmlParser:
     @staticmethod
     def _extract_text_without_tags(element):
         if element is not None:
-            return ''.join(element.itertext()).strip()
+            text_iterator = element.itertext()
+            text = "".join(text_iterator).strip()
+            return text
 
     def abstract(self):
         # Try to find the abstract element with sections
@@ -29,9 +31,15 @@ class XmlParser:
         # If no abstracts with sections are found, try to find abstracts without sections
         xpath_expression_p = ".//abstract/p"
 
-        for xpath_expression in [xpath_expression_with_sec, xpath_expression_no_sec, xpath_expression_p]:
+        for xpath_expression in [
+            xpath_expression_with_sec,
+            xpath_expression_no_sec,
+            xpath_expression_p,
+        ]:
             abstract_elements = self.xml_document.findall(xpath_expression)
-            abstract_elements = [el.text for el in abstract_elements if el.text is not None]
+            abstract_elements = [
+                el.text for el in abstract_elements if el.text is not None
+            ]
             if abstract_elements:
                 # If abstracts with sections are found, concatenate their text
                 abstract_text = " ".join(
@@ -42,21 +50,15 @@ class XmlParser:
 
     def article_type(self):
         article_type = self.xml_document.get("article-type")
-        return article_type
+        if article_type:
+            return article_type
 
     def article_title(self):
         title_xpath = ".//article-title"
         title_element = self.xml_document.find(title_xpath)
-
-        # Check if the title element is not None
-        if title_element is not None:
-            # Get the text content of the title element
-
-            title = ''.join(title_element.itertext()).strip()
-        else:
-            title = None
-        
-        return title
+        title = XmlParser._extract_text_without_tags(title_element)
+        if title:
+            return title
 
     def authors(self):
         author_xpath = ".//contrib[@contrib-type='author']"
@@ -73,22 +75,21 @@ class XmlParser:
     def article_categories(self):
         categories_xpath = ".//article-categories/subj-group/subject"
         categories_elements = self.xml_document.findall(categories_xpath)
-        if categories_elements is not None:
-            categories = [el.text for el in categories_elements]
+        categories = [
+            XmlParser._extract_text_without_tags(el) for el in categories_elements
+        ]
+        if categories:
             return categories
 
     def journal_title(self):
         journal_title_xpath = ".//journal-title"
         journal_title_element = self.xml_document.find(journal_title_xpath)
-        if journal_title_element is not None:
-            journal_title = ''.join(journal_title_element.itertext()).strip()
-        else:
-            journal_title = None
-        return journal_title
+        journal_title = XmlParser._extract_text_without_tags(journal_title_element)
+        if journal_title:
+            return journal_title
 
     def publication_date(self):
         # FIXME change that one to match the publication date not the other one
-
         pub_date_xpath = ".//pub-date"
         pub_date_element = self.xml_document.find(pub_date_xpath)
         if pub_date_element is not None:
@@ -108,15 +109,15 @@ class XmlParser:
     def copyright_info(self):
         copyright_xpath = ".//permissions/copyright-statement"
         copyright_element = self.xml_document.find(copyright_xpath)
-        if copyright_element is not None:
-            copyright_ = copyright_element.text
+        copyright_ = XmlParser._extract_text_without_tags(copyright_element)
+        if copyright_:
             return copyright_
 
     def keywords(self):
         kwd_xpath = ".//kwd-group/kwd"
         kwd_elements = self.xml_document.findall(kwd_xpath)
         if kwd_elements is not None:
-            return [el.text for el in kwd_elements]
+            return [XmlParser._extract_text_without_tags(el) for el in kwd_elements]
 
     def ids(self):
         dict_ids = dict()
@@ -126,11 +127,24 @@ class XmlParser:
         pmcid_element = self.xml_document.find(pmcid_xpath)
         publisher_id_element = self.xml_document.find(publisher_id_xpath)
         doi_element = self.xml_document.find(doi_xpath)
-        dict_ids["pmcid"] = pmcid_element.text if pmcid_element is not None else None
-        dict_ids["publisher_id"] = (
-            publisher_id_element.text if publisher_id_element is not None else None
-        )
-        dict_ids["doi"] = doi_element.text if doi_element is not None else None
+
+        pmcid_text = XmlParser._extract_text_without_tags(pmcid_element)
+        if pmcid_text:
+            dict_ids["pmcid"] = pmcid_text
+        else:
+            dict_ids["pmcid"] = None
+
+        publisher_id_text = XmlParser._extract_text_without_tags(publisher_id_element)
+        if publisher_id_text:
+            dict_ids["publisher_id"] = publisher_id_text
+        else:
+            dict_ids["publisher_id"] = None
+
+        doi_text = XmlParser._extract_text_without_tags(doi_element)
+        if doi_text:
+            dict_ids["doi"] = doi_text
+        else:
+            dict_ids["doi"] = None
         return dict_ids
 
     def funding(self):
@@ -139,26 +153,23 @@ class XmlParser:
         funding_info = []
 
         for funding_element in funding_elements:
-            funding_dict = {}
-            try:
-                funding_dict["institution"] = funding_element.find(
-                    ".//institution"
-                ).text
-            except AttributeError:
-                pass
-            try:
-                funding_dict["award_id"] = funding_element.find(".//award-id").text
-            except AttributeError:
-                pass
-            try:
-                funding_dict["recipient_name"] = funding_element.find(
-                    ".//principal-award-recipient/name"
-                ).text
-            except AttributeError:
-                pass
-            if funding_dict:
-                funding_info.append(funding_dict)
-
+            for element, key in [
+                (".//institution", "institution"),
+                (".//award_id", "award_id"),
+                (
+                    ".//principal-award-recipient/name",
+                    "recipient_name",
+                ),
+            ]:
+                funding_dict = {}
+                try:
+                    funding_el = funding_element.find(element)
+                    funding_text = XmlParser._extract_text_without_tags(funding_el)
+                    if funding_text:
+                        funding_dict[key] = funding_text
+                        funding_info.append(funding_dict)
+                except AttributeError:
+                    pass
         return funding_info
 
     def sections(self):
@@ -172,9 +183,8 @@ class XmlParser:
             for section in value_sections:
                 for value in value_sections[section]:
                     if value in sec_type:
-                        # Extract the text content of the section (text without tags)
-                        section_text = "".join(sec.itertext())
-                        dict_section[section] = section_text.replace('"', "'")
+                        section_text = XmlParser._extract_text_without_tags(sec)
+                        dict_section[section] = section_text
         if any(value is not None for value in dict_section.values()):
             return dict_section
 
@@ -219,7 +229,6 @@ class DynamicXmlParser(XmlParser):
         self._collect_results()
         # Populate the checking status
         self._check_methods()
-
 
     def _get_the_parents_methods(self):
         """
