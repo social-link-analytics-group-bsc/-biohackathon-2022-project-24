@@ -1,4 +1,5 @@
 from datetime import datetime
+import re
 from lxml import etree
 from utils.relevant_tags import value_sections
 
@@ -20,7 +21,10 @@ class XmlParser:
     def _extract_text_without_tags(element):
         if element is not None:
             text_iterator = element.itertext()
-            text = "".join(text_iterator).strip()
+            # Go through all the tags and get the text. Add a space between them
+            text = " ".join(text_iterator)
+            # Remove all extra space after
+            text = re.sub(r'\s+', ' ', text).strip()
             return text
 
     def abstract(self):
@@ -70,7 +74,8 @@ class XmlParser:
                 surname = name_element.findtext("surname")
                 given_names = name_element.findtext("given-names")
                 authors.append(f"{given_names} {surname}")
-        return authors
+        if authors:
+            return authors
 
     def article_categories(self):
         categories_xpath = ".//article-categories/subj-group/subject"
@@ -170,7 +175,8 @@ class XmlParser:
                         funding_info.append(funding_dict)
                 except AttributeError:
                     pass
-        return funding_info
+        if funding_info:
+            return funding_info
 
     def sections(self):
         dict_section = {k: None for k in value_sections}
