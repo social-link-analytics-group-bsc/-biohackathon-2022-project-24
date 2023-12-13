@@ -47,8 +47,20 @@ def get_entries(conn, cur):
     with open('pmcid_list.txt', 'r') as file:
         for line in file:
             pmcid_list.append(str(line.strip()))
+    
+    # Create the table with a single column for IDs
+    cur.execute(f"CREATE TABLE IF NOT EXISTS cordis_pmcid_list (pmcid TEXT NOT NULL)")
+    print("Created cordis pmcid table")
 
-    SQL_QUERY = f"SELECT sections.pmcid, sections.METHODS FROM sections WHERE sections.pmcid IN ({', '.join(['?' for _ in pmcid_list])}) LIMIT 5"
+    # Insert the IDs into the table
+    for id_value in pmcid_list:
+        cur.execute(f"INSERT INTO cordis_pmcid_list (pmcid) VALUES (?)", (id_value,))
+    print("Added all pmcids to cordis table")
+
+    # Commit the changes to the database
+    conn.commit()
+
+    SQL_QUERY = f"SELECT sections.pmcid, sections.METHODS FROM sections INNER JOIN cordis_pmcid_list ON sections.pmcid = cordis_pmcid_list.pmcid;"
     result = cur.execute(SQL_QUERY, pmcid_list)
     return cur.fetchall()
 
