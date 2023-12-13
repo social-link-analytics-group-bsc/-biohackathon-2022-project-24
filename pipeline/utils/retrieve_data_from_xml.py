@@ -22,43 +22,23 @@ class XmlParser:
             return ''.join(element.itertext()).strip()
 
     def abstract(self):
-        # Define the XPath expression to find abstract text with sections
-        xpath_expression_with_sec = ".//abstract/sec"
-
         # Try to find the abstract element with sections
-        abstract_elements = self.xml_document.findall(xpath_expression_with_sec)
-
-        abstract_elements = [el.text for el in abstract_elements if el.text is not None]
-        if abstract_elements:
-            # If abstracts with sections are found, concatenate their text
-            abstract_text = " ".join(
-                abstract_element.strip() for abstract_element in abstract_elements
-            )
-            return abstract_text
-
+        xpath_expression_with_sec = ".//abstract/sec"
         # If no abstracts with sections are found, try to find abstracts without sections
         xpath_expression_no_sec = ".//abstract"
-        abstract_elements = self.xml_document.findall(xpath_expression_no_sec)
-
-        abstract_elements = [el.text for el in abstract_elements if el.text is not None]
-        if abstract_elements:
-            # If abstracts without sections are found, concatenate their text
-            abstract_text = " ".join(
-                abstract_element.strip() for abstract_element in abstract_elements
-            )
-            return abstract_text
-
         # If no abstracts with sections are found, try to find abstracts without sections
-        xpath_expression_no_sec = ".//abstract/p"
-        abstract_elements = self.xml_document.findall(xpath_expression_no_sec)
+        xpath_expression_p = ".//abstract/p"
 
-        abstract_elements = [el.text for el in abstract_elements if el.text is not None]
-        if abstract_elements:
-            # If abstracts without sections are found, concatenate their text
-            abstract_text = " ".join(
-                abstract_element.strip() for abstract_element in abstract_elements
-            )
-            return abstract_text
+        for xpath_expression in [xpath_expression_with_sec, xpath_expression_no_sec, xpath_expression_p]:
+            abstract_elements = self.xml_document.findall(xpath_expression)
+            abstract_elements = [el.text for el in abstract_elements if el.text is not None]
+            if abstract_elements:
+                # If abstracts with sections are found, concatenate their text
+                abstract_text = " ".join(
+                    abstract_element.strip() for abstract_element in abstract_elements
+                )
+                if abstract_text.strip():
+                    return abstract_text
 
     def article_type(self):
         article_type = self.xml_document.get("article-type")
