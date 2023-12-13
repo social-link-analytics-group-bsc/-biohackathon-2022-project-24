@@ -24,7 +24,7 @@ class XmlParser:
             # Go through all the tags and get the text. Add a space between them
             text = " ".join(text_iterator)
             # Remove all extra space after
-            text = re.sub(r'\s+', ' ', text).strip()
+            text = re.sub(r"\s+", " ", text).strip()
             return text
 
     def abstract(self):
@@ -193,8 +193,7 @@ class XmlParser:
                         dict_section[section] = section_text
         if any(value is not None for value in dict_section.values()):
             return dict_section
-
-        return dict_section  # Return None if no sections match the criteria
+        return dict_section
 
 
 class DynamicXmlParser(XmlParser):
