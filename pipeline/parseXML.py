@@ -189,10 +189,10 @@ def processing_response(
     if api_response == 200:
         xml_data = DynamicXmlParser(response)
         # Check if the article-type attribute exists
-        try:
-            status["article_type"] = xml_data.data["article_type"]
-        except KeyError:  # Means an empty document
-            status['article_type'] = 'Empty document'
+        # try:
+        status["article_type"] = xml_data.data["article_type"]
+        # except KeyError:  # Means an empty document
+            # status['article_type'] = 'Empty document'
 
         if xml_origin == "files": 
             check_file = True
@@ -209,6 +209,8 @@ def processing_response(
                     path=folder_path,
                     record_file=record_file,
                 )
+            else:
+                check_file = 'Not recording'
 
             # update the status dictionary
             # print(xml_data.data_status)

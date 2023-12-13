@@ -7,14 +7,19 @@ class XmlParser:
     def __init__(self, xml_document):
         if isinstance(xml_document, str) or isinstance(xml_document, bytes):
             # Parse the XML string into an Element object
-            try:
-                self.xml_document = etree.fromstring(xml_document)
-            except etree.XMLSyntaxError:
-                self.xml_document = None
-                raise Exception
+            # try:
+            self.xml_document = etree.fromstring(xml_document)
+            # except etree.XMLSyntaxError:
+                # self.xml_document = None
+                # raise Exception
         else:
             # If it's already an Element object, use it directly
             self.xml_document = xml_document
+
+    @staticmethod
+    def _extract_text_without_tags(element):
+        if element is not None:
+            return ''.join(element.itertext()).strip()
 
     def abstract(self):
         # Define the XPath expression to find abstract text with sections
@@ -66,7 +71,8 @@ class XmlParser:
         # Check if the title element is not None
         if title_element is not None:
             # Get the text content of the title element
-            title = title_element.text.strip() if title_element.text is not None else None
+
+            title = ''.join(title_element.itertext()).strip()
         else:
             title = None
         
@@ -94,9 +100,10 @@ class XmlParser:
     def journal_title(self):
         journal_title_xpath = ".//journal-title"
         journal_title_element = self.xml_document.find(journal_title_xpath)
-        journal_title = (
-            journal_title_element.text if journal_title_element is not None else None
-        )
+        if journal_title_element is not None:
+            journal_title = ''.join(journal_title_element.itertext()).strip()
+        else:
+            journal_title = None
         return journal_title
 
     def publication_date(self):
@@ -225,17 +232,13 @@ class DynamicXmlParser(XmlParser):
     def __init__(self, xml_document):
         self.data = {}  # Initialize a dictionary to store method results
         self.data_status = {}  # Initialize a dict to store the method status
-        try:
-            super().__init__(xml_document)
-            # Get the parents methods
-            self._get_the_parents_methods()
-            # Collect the results
-            self._collect_results()
-            # Populate the checking status
-            self._check_methods()
-        # In case empty document. Just return empty result
-        except Exception:
-            pass
+        super().__init__(xml_document)
+        # Get the parents methods
+        self._get_the_parents_methods()
+        # Collect the results
+        self._collect_results()
+        # Populate the checking status
+        self._check_methods()
 
 
     def _get_the_parents_methods(self):
@@ -245,7 +248,7 @@ class DynamicXmlParser(XmlParser):
         self.parent_class_methods = [
             func
             for func in dir(XmlParser)
-            if callable(getattr(XmlParser, func)) and not func.startswith("__")
+            if callable(getattr(XmlParser, func)) and not func.startswith("_")
         ]
 
     def _collect_results(self):
