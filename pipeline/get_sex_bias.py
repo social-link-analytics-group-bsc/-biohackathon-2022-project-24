@@ -61,7 +61,7 @@ def get_entries(conn, cur):
     conn.commit()
 
     SQL_QUERY = f"SELECT sections.pmcid, sections.METHODS FROM sections INNER JOIN cordis_pmcid_list ON sections.pmcid = cordis_pmcid_list.pmcid;"
-    result = cur.execute(SQL_QUERY, pmcid_list)
+    result = cur.execute(SQL_QUERY)
     return cur.fetchall()
 
 # Create table to record model results in (pmcid, n_fem, n_male, per_fem, perc_male, sample)
@@ -120,11 +120,13 @@ def run_model_on_entry(row, nlp):
     # Split methods section into sentences
     if methods is not None:
         sentences = sent_tokenize(methods)
+        modified_sentences = []
         for sentence in sentences:
             if len(sentence) > 512:
                 sentence = sentence[:512]
+            modified_sentences.append(sentence)
 
-        annotations = nlp(sentences)
+        annotations = nlp(modified_sentences)
         
         sentence_index = []
         n_male = []
@@ -143,7 +145,6 @@ def run_model_on_entry(row, nlp):
                     # if the token we are looking at should be appended to the previous token
                     if (list_index > 0) and (annotation["entity"] == list[list_index-1]["entity"]) and (annotation['word'].startswith("##")) and (list[list_index-1]["end"] == annotation["start"]):
                         # Get the last entry added to the list for this entity in the dictionary (this is what we need to append to)
-                        print("Found token to append")
                         prev = dict[annotation["entity"]][-1]
                         # Remove hashtags
                         add = annotation["word"].replace("#", "")
