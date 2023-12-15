@@ -1,8 +1,17 @@
-# TODO - remove import json
-# TODO - pass print statements to log file
-# TODO - check it works
+'''
+USAGE
+From python script (dict):
+    from get_cleaned_data import get_cleaned_data
+    dict = get_cleaned_data(dict)
 
+From python script (list of dicts):
+    from get_cleaned_data import get_cleaned_data
+    dict = get_cleaned_data(dict, input_type = 'list_of_dicts')
+    
+From bash terminal (json file (dict or list of dicts))
+    python get_cleaned_data.py <json_input> <json_output>
 
+'''
 import pandas as pd
 import ast
 import json
@@ -360,10 +369,8 @@ def merge_sentences(df):
 
     return df
 
-def get_clean_data(input_dict):
+def get_clean_data(input_dict, input_type = 'dict'):
     '''
-    Converts the list of 
-
     Input: dict, or list of dicts, with at least the following keys, where all values are strings:
          ['pmcid', 'sentence_index', 'n_fem', 'n_male', 'perc_fem', 'perc_male', 'sample']
 
@@ -381,14 +388,18 @@ def get_clean_data(input_dict):
     relevant_columns = ['sentence_index', 'n_fem', 'n_male', 'perc_fem', 'perc_male', 'sample']
     
     # Convert to pandas, checking if input is a dict, or list of dicts
-    type(input_dict)
-    if isinstance(input_dict, list):
-        if isinstance(input_dict[0], dict):
+    if input_type == 'dict':
+        if isinstance(input_dict, dict):
+            df = pd.DataFrame([input_dict])
+        else:
+            raise ValueError('Input is not dict')
+    elif input_type == 'list_of_dicts':
+        if isinstance(input_dict, list) & isinstance(input_dict[0], dict):
             df = pd.DataFrame(input_dict)
-    elif isinstance(input_dict, dict):
-        df = pd.DataFrame([input_dict])
+        else:
+            raise ValueError('Input is not a list of dicts')
     else:
-        raise ValueError('Input is not dict nor a list of dicts')
+        raise ValueError('input type should be "dict" or "list_of_dicts')
 
     # TODO - remove
     #df = df[['pmcid'] + relevant_columns][df['pmcid'] == 'PMC9278617']
@@ -408,14 +419,18 @@ def get_clean_data(input_dict):
 
     output_list = final_df.to_dict(orient='records')
 
-    # Uncomment return a dict instead of a list of dicts
-    # output_dict = output_list[0]
-    # return output_dict
+    if input_type == 'dict':
+        output_dict = output_list[0]
+        return output_dict
 
     return output_list
 
 
 if __name__ == '__main__':
+    '''
+    Input a json file and output a JSON file.
+    JSON file can be either a dict or a list of dicts
+    '''
 
     # Get a JSON file
     if len(sys.argv) != 3:
@@ -426,11 +441,15 @@ if __name__ == '__main__':
 
     # Load dictionary
     with open(input_path) as file:
-        input_list = json.load(file)
-    input_dict = input_list[0]
+        input_dict = json.load(file)
 
     # Get the cleaned data
-    output_dict = get_clean_data(input_dict)
+    if isinstance(input_dict, dict):
+        output_dict = get_clean_data(input_dict)
+    elif isinstance(input_dict, list) & isinstance(input_dict[0], dict):
+        output_dict = get_clean_data(input_dict, input_type = 'list_of_dicts')
+    else:
+        raise ValueError('Input is not a dict nor a list of dicts')
 
     # Save dictionary
     with open(output_path, 'w') as file:
