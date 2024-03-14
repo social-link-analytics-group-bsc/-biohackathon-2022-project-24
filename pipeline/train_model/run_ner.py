@@ -19,6 +19,10 @@ Fine-tuning the library models for token classification.
 # You can also adapt this script on your own token classification task and datasets. Pointers for this are left as
 # comments.
 
+# Example of use: 
+# python run_ner.py --model_name_or_path=michiyasunaga/BioLinkBERT-base --output_dir=trained_models/biolinkBERT_5e --dataset_script_path=sbe.py --do_train --do_eval --num_train_epochs=5
+
+
 import logging
 import os
 import sys
@@ -428,7 +432,9 @@ def main():
     data_collator = DataCollatorForTokenClassification(tokenizer, pad_to_multiple_of=8 if training_args.fp16 else None)
 
     # Metrics
-    metric = load_metric("/gpfs/projects/bsc88/projects/bne/eval_amd/metrics/seqeval.py")
+    # !pip install seqeval
+    metric = load_metric('seqeval')
+
 
     def compute_metrics(p):
         predictions, labels = p

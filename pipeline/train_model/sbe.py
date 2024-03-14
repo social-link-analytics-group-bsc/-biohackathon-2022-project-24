@@ -10,7 +10,7 @@ _DESCRIPTION = """
 
 _HOMEPAGE = """"""
 
-_URL = "./"
+_URL = "../../data/training_data/"
 _TRAINING_FILE = "train.conll"
 _DEV_FILE = "dev.conll"
 _TEST_FILE = "test.conll"
