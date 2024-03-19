@@ -68,7 +68,7 @@ def commit_to_database(conn, pmcid, table, results):
             results[key] = json.dumps(results[key])
         ensure_column_exists(conn, table, key)
     sql_query = f"""
-    INSERT OR IGNORE INTO {table} ({', '.join([k for k in results])}) VALUES ({', '.join(['?' for _ in results])})
+    INSERT OR REPLACE INTO {table} ({', '.join([k for k in results])}) VALUES ({', '.join(['?' for _ in results])})
     """
     c = conn.cursor()
     c.execute(sql_query, tuple(results.values()))
