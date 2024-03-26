@@ -16,7 +16,7 @@ import yaml
 This function takes the output of the ner model and formats it into
 the spans that prodigy expects
 '''
-def format_ner_spans(classfied_tokens, classfied_tokens_2):
+def format_ner_spans(classfied_tokens):
 
     spans = []
     
@@ -30,11 +30,12 @@ def format_ner_spans(classfied_tokens, classfied_tokens_2):
         spans.append(span)
 
     # Getting the index (token level)
+    # Look into this and what it is exactly doing, do we need to do this, I think there is a simpler way??
     final_spans = []
     for sp in spans:
         index_start = -1
         index_end = -1
-        for t in classfied_tokens_2:
+        for t in classfied_tokens:
             if(sp['start'] == t['start']  ):
                 index_start = t['index']
             
@@ -73,8 +74,7 @@ def _get_token_dict(token_decoded, start, end, id, index, join_tokens):
     token_dict['id'] = id               # id is the token number
     token_dict['index'] = index         # index is ??
     
-    
-    
+    # if the token is the start or end token of the text, set the variables accordingly 
     if token_decoded == "[CLS]":
         token_dict['start'] = 0
         token_dict['end'] = 0
@@ -108,6 +108,7 @@ def tokens_to_prodigy_dict(tokenizer, txt_to_tokenize):
     join_tokens = False
     for i,token in enumerate(encoded_sequence):
         
+        # This is for checking if the current token and next token are one word, in order to set char indicies accordingly
         if i < len(encoded_sequence)-1:
             next_token = tokenizer.decode(encoded_sequence[i+1])
             if next_token.startswith("##"):
@@ -171,15 +172,14 @@ def run_classifier(methods, classifier, tokenizer):
 This function runs the model on the given methods sections and formats the results 
 in prodigy annotation format
 ''' 
-def get_annotations(methods , pmcid, classifier, classifier_2, tokenizer):
+def get_annotations(methods , pmcid, classifier, tokenizer):
 
     doc_json = {}
     doc_json['text'] = methods
 
     cf = run_classifier(methods, classifier, tokenizer)
-    cf2 = run_classifier(methods, classifier_2, tokenizer)
 
-    doc_json['spans'] = format_ner_spans(cf, cf2)
+    doc_json['spans'] = format_ner_spans(cf)
 
     # Adding all tokens info
     list_of_tokens_prodigy_format = tokens_to_prodigy_dict(tokenizer = tokenizer, 
@@ -246,10 +246,8 @@ def main(*args, **kwargs):
     print(f'USING MODEL:{MODEL}')
     # NOTE: I dont think I need both classifiers, just the none, because I think
     # is for when an annotations can fall under multiple classes, check with Adri
-    classifier = pipeline("ner", model=MODEL, aggregation_strategy=None)    # simple strategy is for ...
-    classifier_2 = pipeline("ner", model=MODEL, aggregation_strategy=None)      # no strategy is for ... 
-    #tokenizer = AutoTokenizer.from_pretrained(MODEL, device = args.device)
-    tokenizer = AutoTokenizer.from_pretrained(MODEL, device = args.device, do_basic_tokenize=True) 
+    classifier = pipeline("ner", model=MODEL, aggregation_strategy=None)
+    tokenizer = AutoTokenizer.from_pretrained(MODEL, device = args.device) #do_basic_tokenize=True 
     print("Established classifier and tokenizer")
 
     # Connect to database and get methods sections 
@@ -265,7 +263,7 @@ def main(*args, **kwargs):
         for row in entries:
             pmcid, methods = row
             if methods is not None:
-                methods_annotated = get_annotations( methods , pmcid, classifier, classifier_2, tokenizer)
+                methods_annotated = get_annotations( methods , pmcid, classifier, tokenizer)
                 json.dump(methods_annotated, fout)
                 fout.write('\n')
                 fout.flush()
@@ -278,6 +276,7 @@ if __name__ == '__main__':
 '''
 Innvocation example:
     python3 ner_output_to_prodigy_input.py --output annotations.jsonl
+    
     python3 -m prodigy mark bh_23 annotations_script.jsonl  --label sample,n_male,n_female,perc_male,perc_female --view-id ner_manual
 
 
