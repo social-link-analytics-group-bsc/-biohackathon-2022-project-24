@@ -1,0 +1,11 @@
+{
+    "custom_theme": {
+        "labels":{
+            "sample": "#BBBBBB",
+            "n_male": "#98C9FF",
+            "n_female": "#FFF198",
+            "perc_male": "#98C9FF",
+            "perc_female": "#FFF198"
+        }
+    }
+}

@@ -1,4 +1,4 @@
 model_info:
-  model_path : 'mounted_gpfs/pipeline/second_model'
+  model_path : 'mounted_gpfs/second_model'
 database:
-  db_file : 'mounted_gpfs/data/db_info_articles_test.sqlite3'
+  db_file : 'mounted_gpfs/data/db_backup.sqlite3'

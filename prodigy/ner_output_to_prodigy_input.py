@@ -1,209 +1,162 @@
 import argparse
 import os
 import sys
-from transformers import pipeline, AutoTokenizer, AutoModelForTokenClassification,logging
+from transformers import pipeline, AutoTokenizer, AutoModelForTokenClassification, logging
 import torch
 import logging as os_logging
 import re
 import json
 from nltk.tokenize import sent_tokenize
 import sqlite3
-import tqdm
+import spacy
+from tqdm.auto import tqdm
 import yaml
+from word2number import w2n
 
+def is_number(text):
+    '''Return true if the string is a number'''
+    # List of words incorrectly labelled as numbers
+    not_numbers = ['point']
 
-'''
-This function takes the output of the ner model and formats it into
-the spans that prodigy expects
-'''
-def format_ner_spans(classfied_tokens):
+    try:
+        w2n.word_to_num(text)
+        isnumber = True if text not in not_numbers else False
+    except:
+        isnumber = False
+    return isnumber
 
-    spans = []
+def get_prodigy_tokens(text, tokenizer):
+    '''Get tokens in prodigy format'''
+    # Tokenize the text & get offsets
+    encoded_input = tokenizer(text, return_offsets_mapping=True)
+    offset_mappings = encoded_input['offset_mapping']
+    tokens = tokenizer.convert_ids_to_tokens(encoded_input['input_ids']) # Tokens include ['CLS'] & ['SEP']
     
-    for t in classfied_tokens:
-        span = {}
-        span['text']= t['word']
-        span['label']= t['entity']
-        span['start']= t['start']
-        span['end']= t['end']
-
-        spans.append(span)
-
-    # Getting the index (token level)
-    # Look into this and what it is exactly doing, do we need to do this, I think there is a simpler way??
-    final_spans = []
-    for sp in spans:
-        index_start = -1
-        index_end = -1
-        for t in classfied_tokens:
-            if(sp['start'] == t['start']  ):
-                index_start = t['index']
-            
-            if(sp['end'] == t['end']  ):
-                index_end = t['index']
-                sp['token_start'] = index_start
-                sp['token_end'] = index_end
-
-                final_spans.append(sp)
-                break
-
-    return final_spans
-
-
-'''
-This function returns a dictionary pertaining to one token and
-its position in the text 
-'''
-def _get_token_dict(token_decoded, start, end, id, index, join_tokens):
-
-    token_dict = {}
-    # Not sure if this is the right solution if this messes up the indicies when the annotations are corrected in prodigy
-    # Check this and see if there is a setting for the tokenizer to make the ## not appear
-    # If I do this here, I have to also do it in the tokens so that the character indicies are correct,
-    # Basically remove the ## before prodigy, annotate in prodigy, and then add ## back before using for training the model
-    if token_decoded.startswith("##"):
-        token_dict['text'] = token_decoded[2:] 
-    else:
-        token_dict['text'] = token_decoded
-    
-    if join_tokens == True:
-        token_dict['ws'] = False
-    else:
-        token_dict['ws'] = True
-
-    token_dict['id'] = id               # id is the token number
-    token_dict['index'] = index         # index is ??
-    
-    # if the token is the start or end token of the text, set the variables accordingly 
-    if token_decoded == "[CLS]":
-        token_dict['start'] = 0
-        token_dict['end'] = 0
-        token_dict['disabled'] = True
-    elif token_decoded == "[SEP]":
-        token_dict['start'] = 0
-        token_dict['end'] = 0
-        token_dict['disabled'] = True
-    else:
-        # Start and end are at the char level
-        token_dict['start'] = start
-        token_dict['end'] = end
-        token_dict['disabled'] = False
-    
-    return token_dict
-
-
-'''
-This function returns a list of dicts (one dict per token)
-so that prodigy does not have to tokenize the text
-    
-Example of a dict = {"text":"How","start":0,"end":3,"id":0}
-'''
-def tokens_to_prodigy_dict(tokenizer, txt_to_tokenize):
-
-    # Tokenize and return tokens and not tensors
-    encoded_sequence = tokenizer(txt_to_tokenize)["input_ids"]
-
-    list_of_tokens = []
-    char_counter = 0
-    join_tokens = False
-    for i,token in enumerate(encoded_sequence):
+    prodigy_tokens = []
+    for id, (token, (start, end)) in enumerate(zip(tokens, offset_mappings)):
         
-        # This is for checking if the current token and next token are one word, in order to set char indicies accordingly
-        if i < len(encoded_sequence)-1:
-            next_token = tokenizer.decode(encoded_sequence[i+1])
-            if next_token.startswith("##"):
-                join_tokens = True
+        # Add token to prodigy_tokens
+        token = token[2:] if token.startswith('##') else token
+        token_dict = {
+            'text': token,
+            'id': id,
+            'start': start,
+            'end': end,
+            'disabled': not is_number(token), # Disable all non-numeric words
+            'ws': id+1 == len(tokens) or end != offset_mappings[id+1][0] # Whitespace
+        }
+        prodigy_tokens.append(token_dict)
 
-        token_decoded = tokenizer.decode(token)
-        # If the current token should be concatenated with the previous token, subtract 
-        # one from the char counter to account for no space being between the tokens
-        if token_decoded.startswith("##"):
-            char_counter -= 1
-        token_dict = _get_token_dict(token_decoded, 
-                                     start = char_counter ,
-                                     end = char_counter +  len(token_decoded), 
-                                     id=token,
-                                     index=i,
-                                     join_tokens=join_tokens
-                                     )
-        if token_decoded != "[CLS]" and token_decoded != "[SEP]":
-            char_counter += (len(token_decoded) + 1)
-
-        list_of_tokens.append(token_dict)
-        join_tokens = False
-
-    return list_of_tokens
+    return prodigy_tokens
 
 
-'''
-This function runs the model
-This is somewhat specific to the tokenizer and model and that was create in BH2022, because 
-we have to run the model sentence by sentence of the methods sections and then join the results
-of each sentence into one results per methods section
-'''
-def run_classifier(methods, classifier, tokenizer):
+def get_prodigy_spans(sents_annotations: list, doc, pmcid: str, tokenizer):
+    '''
+    Fix offsets in sents_annotations and return prodigy-format spans
+    '''
+    text = doc.text
+    sentences = doc.sents
 
-    joined_annotations = []
-    # Split methods into array of sentences
-    sentences = sent_tokenize(methods)
-    truncated_sentences = [s[:512] for s in sentences]
+    def add_current_span(current_span, char_offset, token_offset, text, pmcid):
+        '''
+        Fix offsets, ensure span is correct, and add to prodigy_spans
+        '''
+        # Fix sentence and token offsets
+        current_span['start'] += char_offset
+        current_span['end']   += char_offset
+        current_span['token_start'] += token_offset
+        current_span['token_end']   += token_offset
+        
+        # Ensure offsets match with the text. Else, raise error
+        text_span = text[current_span['start']:current_span['end']].lower()
+        assert current_span['text'].strip('#') == text_span, f"Span doesn't coincide with text: {current_span['text']} != {text_span}.PMCID: {pmcid}\n{text[current_span['start']-100:current_span['end']+100]}" 
 
-    # Run model on array 
-    annotations = classifier(truncated_sentences)
-    char_buffer = 0
-    token_buffer = 0
-    # Loop through annotations and associated sentences
-    for sentence, annotation in zip(truncated_sentences, annotations):
-        for dict in annotation:
-            # Add buffer to start and end indexes
-            dict['start'] += char_buffer 
-            dict['end'] += char_buffer
-            dict['index'] += token_buffer
-            # Add modified dictionary to list of final dictionaries
-            joined_annotations.append(dict)
-        # Set new char and token buffer, adding current sentence
-        char_buffer += (len(sentence))
-        token_buffer += len(tokenizer(sentence)["input_ids"]) - 2       # -2 for the start and end buffers 
-
-    return joined_annotations
+        # Append to prodigy_spans
+        prodigy_spans.append(current_span)
+        return
 
 
-'''
-This function runs the model on the given methods sections and formats the results 
-in prodigy annotation format
-''' 
-def get_annotations(methods , pmcid, classifier, tokenizer):
+    prodigy_spans =  []
+    char_offset = 0
+    token_offset = 0
+    
+    for sentence, entities in zip(sentences, sents_annotations):
+        char_offset = sentence.start_char
+        if len(entities) != 0:
+            current_span = None
+            for entity in entities:
+                
+                if current_span and entity['start'] == current_span['end'] and entity['entity'] == current_span['label']:
+                    # Extend the current span: merge numbers together
+                    current_span['text'] += entity['word'].strip('##')  # TODO - This won't account for things like "thirty six"
+                    current_span['end'] = entity['end']
+                    current_span['token_end'] = entity['index']        
 
-    doc_json = {}
-    doc_json['text'] = methods
+                else:
+                    # Finish the previous span if it exists
+                    if current_span:
+                        add_current_span(current_span, char_offset, token_offset, text, pmcid)
+        
+                    # Start a new span
+                    current_span = {
+                        'text' : entity['word'],
+                        'label': entity['entity'],
+                        'start': entity['start'],
+                        'end'  : entity['end'],
+                        'token_start': entity['index'],
+                        'token_end'  : entity['index']
+                    }
 
-    cf = run_classifier(methods, classifier, tokenizer)
+            # Add the last span if the loop ends
+            if current_span:
+                add_current_span(current_span, char_offset, token_offset, text, pmcid)
 
-    doc_json['spans'] = format_ner_spans(cf)
+        # Update token offset
+        token_offset += len(tokenizer.tokenize(sentence.text))
+    
+    return prodigy_spans
 
-    # Adding all tokens info
-    list_of_tokens_prodigy_format = tokens_to_prodigy_dict(tokenizer = tokenizer, 
-                                                           txt_to_tokenize = doc_json['text'] 
-                                                           )                                                 
-    doc_json['tokens'] = list_of_tokens_prodigy_format
 
-    # Additional metadata
-    meta = {}
-    meta['pmcid'] = pmcid
+def get_annotations(doc, pmcid, classifier, tokenizer) -> dict:
+    '''
+    Run the model on 1 method secton and return the dict doc_json for 1 method section,
+    which has the prodigy annotation format.
+    doc_json structure is defined at the end of the document (Prodigy format example) 
+    '''
+    
+    # Run model & get annotations by sentence
+    sentences = doc.sents
+    truncated_sents = [sent.text[:512] for sent in sentences]
+    sents_annotations = classifier(truncated_sents)
+
+    # Get tokens and spans
+    prodigy_tokens = get_prodigy_tokens(doc.text, tokenizer)
+    prodigy_spans  = get_prodigy_spans(sents_annotations, doc, pmcid, tokenizer)   
+
+    # Create document dict
+    doc_json = {
+        'text':   doc.text,
+        'spans':  prodigy_spans,
+        'tokens': prodigy_tokens
+    }
+    
+    # Add metadata
+    meta = {
+        'pmcid': pmcid,
+    }
     doc_json['meta'] = meta
 
     return doc_json
 
-'''
-This function queries the database to get methods sections
-'''
-def get_methods(db_file, limit_value):
+
+def get_methods_from_db(db_file, limit_value, offset_value=0) -> list:
+    '''Query SQL db to get the methods section of [a subset of] the PMIDs in the db'''
 
     conn = sqlite3.connect(db_file)
     cur = conn.cursor()
 
-    SQL_QUERY = 'SELECT sections.pmcid, sections.METHODS FROM sections LIMIT ?;'
-    cur.execute(SQL_QUERY,(limit_value,))
+    SQL_QUERY = 'SELECT sections.pmcid, sections.METHODS FROM sections LIMIT ? OFFSET ?;'
+    cur.execute(SQL_QUERY,(limit_value, offset_value))
     return cur.fetchall()
 
 
@@ -214,10 +167,6 @@ def parse_args():
     parser.add_argument("--data_folder",
                         default='/gpfs/projects/bsc02/sla-projects/BioHackathon2022/biohackathon-2022-project-24/data/',
                         help="Folder where methods sections data is located"    # OR WHEN EDITED, WHERE THE RAW MODEL OUTPUT DATA IS LOCATED
-                        )
-    parser.add_argument("--device",
-                        default=-1,
-                        help="Device torch id (whether to use the GPU or not, 0 for GPU, -1 for CPU)"
                         )
     parser.add_argument("--output",
                         default='annotations.jsonl',
@@ -233,8 +182,7 @@ def main(*args, **kwargs):
     # Load command line aruments 
     args = parse_args(*args, **kwargs)
     assert args.output is not None, 'You must specify an output path!'
-    data_folder = args.data_folder
-    device = args.device
+    data_folder = args.data_folder  # TODO - Remove? Unused variable
 
     # Load config
     sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
@@ -244,29 +192,83 @@ def main(*args, **kwargs):
     # Instantiate nlp pipeline
     MODEL = config_all['model_info']['model_path']
     print(f'USING MODEL:{MODEL}')
-    # NOTE: I dont think I need both classifiers, just the none, because I think
-    # is for when an annotations can fall under multiple classes, check with Adri
     classifier = pipeline("ner", model=MODEL, aggregation_strategy=None)
-    tokenizer = AutoTokenizer.from_pretrained(MODEL, device = args.device) #do_basic_tokenize=True 
-    print("Established classifier and tokenizer")
+    tokenizer = AutoTokenizer.from_pretrained(MODEL)
+    print("Classifier and tokenizer loaded")
+
+    # Instantiate nlp sentenciser
+    # To install:
+    #pip install https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.5.3/en_core_sci_md-0.5.3.tar.gz
+    nlp = spacy.load("en_core_sci_md")
+    print("Spacy sentenciser loaded")
 
     # Connect to database and get methods sections 
     DB_FILE = config_all["database"]["db_file"]
     print("Fetching methods sections from database...")
     # Second argument is the limit of entries you want to gather with the query, remove this here and from the function if you want to get all
-    entries = get_methods(DB_FILE, 10)
-    print("Methods fetched:", len(entries))
+    SQLentries = get_methods_from_db(DB_FILE, 1000, 0) 
+    
+    ####################################################
+    while True:
+        # TEMPORARY - Uncomment to use a JSON file to speed up testing
 
-    # Loop through the data in the data folder, run the model on the entries, and turn the model output into prodigy annotations format
-    with open(args.output,'w') as fout:
+        # SAVE ENTRIES INTO JSON FILE.
+        # Save a subset of entries from the SQL db into a JSON file for quick access
+        #entries_dict = [{'PMID': entry[0], 'Text': entry[1]} for entry in entries]
+        #with open('entries_subset.json', 'w') as file:
+        #    json.dump(entries_dict, file, indent=4)
+
+        # LOAD ENTRIES JSON FILE. Convert into a list of tuples
+        #with open('entries_subset.json', 'r') as file:
+        #    entries_dict = json.load(file)
+        #SQLentries = [(entry['PMID'], entry['Text']) for entry in entries_dict]
+        break
+    ####################################################
+
+    # Instantiate a lists
+    pmcids = []
+    methods = []
+    # Save only those where methods is not None
+    for pmcid, methods_sect in SQLentries:
+        if methods_sect is not None:
+            pmcids.append(pmcid)
+            methods.append(methods_sect)
+
+    print(f"Methods fetched: {len(SQLentries)}, from which {len(methods)} are not None", )
+    
+
+    # Create docs to split into sentences. Disable components to speed it up
+    # Create docs in batches. It gets killed otherwise.
+    batch_size = 50  # Adjust batch size based on your memory constraints
+
+    # Open the output file outside the loop
+    with open(args.output, 'w') as fout:
         print("Getting annotations for methods...")
-        for row in entries:
-            pmcid, methods = row
-            if methods is not None:
-                methods_annotated = get_annotations( methods , pmcid, classifier, tokenizer)
-                json.dump(methods_annotated, fout)
-                fout.write('\n')
-                fout.flush()
+
+        # Process the documents in batches
+        for doc, pmcid in tqdm(zip(nlp.pipe(methods, disable=['tagger', 'ner', 'lemmatizer', 'textcat'], batch_size=batch_size), pmcids), total=len(pmcids)):
+            
+            # Get annotations ready for prodigy
+            methods_annotated = get_annotations(doc, pmcid, classifier, tokenizer)
+            
+            # Write the annotations for the current document to the file
+            json.dump(methods_annotated, fout)
+            fout.write('\n')  # Write a newline character after each JSON object
+            fout.flush()
+
+    print(f'Annotations saved in {args.output}')
+
+    # # Loop through the data in the data folder, run the model on the entries, and turn the model output into prodigy annotations format
+    # with open(args.output,'w') as fout:
+    #     print("Getting annotations for methods...")
+        
+    #     for row in tqdm(SQLentries):
+    #         pmcid, methods = row
+    #         if methods is not None:
+    #             methods_annotated = get_annotations(methods, pmcid, classifier, tokenizer)
+    #             json.dump(methods_annotated, fout)
+    #             fout.write('\n')
+    #             fout.flush()
 
 
 if __name__ == '__main__':
@@ -282,6 +284,6 @@ Innvocation example:
 
 Prodigy format example:
     {"text" : "... methods section text ...",
-    "spans" : [..., {"text": "125", "label": "sample", "start": 373, "end": 376, "token_start": 70, "token_end": 70}, ...], 
-    "tokens" : [..., {"text": "study", "id": 2817, "index": 7, "start": 36, "end": 41, "disabled": false}, ...]}
+    "spans" : [..., {'text': '125', 'start': 376, 'end': 379, 'token_start': 70, 'token_end': 70, 'label': 'sample'}, ...], 
+    "tokens" : [..., {'text': 'methods', 'id': 1, 'start': 0, 'end': 7, 'disabled': False}, ...]}
 '''
