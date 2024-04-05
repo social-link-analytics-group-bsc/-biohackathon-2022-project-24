@@ -15,11 +15,15 @@ The environment must have the following packages:
 
 
 ### Example of use:
-`python ner_output_to_prodigy_input.py --output annotations.jsonl`
-`python -m prodigy mark bh_23 annotations.jsonl  --label sample,n_male,n_female,perc_male,perc_female --view-id ner_manual`
+`annotations.jsonl`, created with `ner_output_to_prodigy_input.py`, is used to pre-annotate the method sections that can then be revised with prodigy.
+```
+python ner_output_to_prodigy_input.py --output annotations.jsonl
+prodigy mark bh_23 annotations.jsonl  --label sample,n_male,n_female,perc_male,perc_female,sample_p,n_male_p,n_female_p,perc_male_p,perc_female_p --view-id ner_manual
+```
 
-After using prodigy, get the annotations from the json file:
-
-`prodigy db-out bh_23 > final_annotations.jsonl`
+When annotation has finished, save the annotations in a jsonl file:
+```
+prodigy db-out bh_23 > final_annotations.jsonl
+```
 
 

@@ -1,11 +1,44 @@
 {
+    "theme": "basic",
     "custom_theme": {
-        "labels":{
-            "sample": "#BBBBBB",
-            "n_male": "#98C9FF",
-            "n_female": "#FFF198",
-            "perc_male": "#98C9FF",
-            "perc_female": "#FFF198"
-        }
-    }
-}
+	"labels": {
+		"sample": "#BBBBBB",
+		"n_male": "#98C9FF",
+		"n_female": "#FFF198",
+		"perc_male": "#98C9FF",
+		"perc_female": "#FFF198",
+		"sample_p": "#BBBBBB",
+		"n_male_p": "#98C9FF",
+		"n_female_p": "#FFF198",
+		"perc_male_p": "#98C9FF",
+		"perc_female_p": "#FFF198"
+	}
+    },
+    "buttons": ["accept", "reject", "ignore", "undo"],
+    "batch_size": 10,
+    "history_size": 10,
+    "cors": true,
+    "db": "sqlite",
+    "db_settings": {},
+    "validate": true,
+    "auto_exclude_current": true,
+    "instant_submit": false,
+    "auto_count_stream": false,
+    "total_examples_target": 0,
+    "ui_lang": "en",
+    "project_info": ["dataset", "session", "lang", "recipe_name", "view_id", "label"],
+    "show_stats": false,
+    "hide_meta": false,
+    "show_flag": false,
+    "instructions": false,
+    "swipe": false,
+    "swipe_gestures": { "left": "accept", "right": "reject" },
+    "split_sents_threshold": false,
+    "html_template": false,
+    "global_css": ".prodigy-container {display: grid; grid-template-columns: 1fr};",
+    "javascript": null,
+    "writing_dir": "ltr",
+    "show_whitespace": false,
+    "exclude_by": "task"
+  }
+

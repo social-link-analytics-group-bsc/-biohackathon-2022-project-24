@@ -12,6 +12,7 @@ import spacy
 from tqdm.auto import tqdm
 import yaml
 from word2number import w2n
+import re
 
 def is_number(text):
     '''Return true if the string is a number'''
@@ -149,6 +150,34 @@ def get_annotations(doc, pmcid, classifier, tokenizer) -> dict:
     return doc_json
 
 
+def postprocess_methods_from_db(SQLentries):
+    '''Remove empty methods sections, and add spaces between title and text'''
+
+    # Instantiate a lists
+    pmcids = []
+    methods = []
+
+    # REGEX
+    # Define the list of words to add space after, if not followed by a space or 's' and a space
+    title_words = ['method(s|ology|ologies)', 'samples', 'subjects', 'patients', 'participants', 'materials', 'setting[s]?', 'procedure[s]?', 'dataset[s]?', 'statement[s]?', 'population[s]?', 'collection[s]?', 'preparation[s]?', 'ethic[s]?', 'system[s]?', 'culture[s]?']
+
+    # Join the words into a regex pattern, using '|'. Add a look-ahead to check for a space or [),.]
+    pattern = r'(' + '|'.join(title_words) + ')(?![\s\),.])'
+
+    # Define a replacement function that adds a space at the end of the matched word
+    def add_space(match):
+        return match.group(0) + ' '
+
+    # Save only those where methods is not None
+    for pmcid, methods_sect in SQLentries:
+        if methods_sect is not None:
+            pmcids.append(pmcid)
+            # Use re.sub() to replace the matched patterns with the same text plus a space
+            corrected_methods_sect = re.sub(pattern, add_space, methods_sect, flags=re.IGNORECASE)
+            methods.append(corrected_methods_sect)
+
+    return pmcids, methods
+
 def get_methods_from_db(db_file, limit_value, offset_value=0) -> list:
     '''Query SQL db to get the methods section of [a subset of] the PMIDs in the db'''
 
@@ -157,7 +186,13 @@ def get_methods_from_db(db_file, limit_value, offset_value=0) -> list:
 
     SQL_QUERY = 'SELECT sections.pmcid, sections.METHODS FROM sections LIMIT ? OFFSET ?;'
     cur.execute(SQL_QUERY,(limit_value, offset_value))
-    return cur.fetchall()
+    SQLentries = cur.fetchall()
+
+    pmcids, methods = postprocess_methods_from_db(SQLentries)
+
+    print(f"Methods fetched: {len(SQLentries)}, from which {len(methods)} are not None", )
+
+    return pmcids, methods
 
 
 def parse_args():
@@ -179,7 +214,7 @@ def parse_args():
 
 def main(*args, **kwargs):
 
-    # Load command line aruments 
+    # Load command line arguments 
     args = parse_args(*args, **kwargs)
     assert args.output is not None, 'You must specify an output path!'
     data_folder = args.data_folder  # TODO - Remove? Unused variable
@@ -196,8 +231,8 @@ def main(*args, **kwargs):
     tokenizer = AutoTokenizer.from_pretrained(MODEL)
     print("Classifier and tokenizer loaded")
 
-    # Instantiate nlp sentenciser
-    # To install:
+    # Use spacy nlp to separate the text into sentences
+    # Install with:
     #pip install https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.5.3/en_core_sci_md-0.5.3.tar.gz
     nlp = spacy.load("en_core_sci_md")
     print("Spacy sentenciser loaded")
@@ -206,46 +241,14 @@ def main(*args, **kwargs):
     DB_FILE = config_all["database"]["db_file"]
     print("Fetching methods sections from database...")
     # Second argument is the limit of entries you want to gather with the query, remove this here and from the function if you want to get all
-    SQLentries = get_methods_from_db(DB_FILE, 1000, 0) 
-    
-    ####################################################
-    while True:
-        # TEMPORARY - Uncomment to use a JSON file to speed up testing
+    pmcids, methods = get_methods_from_db(DB_FILE, 2000, 0) 
 
-        # SAVE ENTRIES INTO JSON FILE.
-        # Save a subset of entries from the SQL db into a JSON file for quick access
-        #entries_dict = [{'PMID': entry[0], 'Text': entry[1]} for entry in entries]
-        #with open('entries_subset.json', 'w') as file:
-        #    json.dump(entries_dict, file, indent=4)
-
-        # LOAD ENTRIES JSON FILE. Convert into a list of tuples
-        #with open('entries_subset.json', 'r') as file:
-        #    entries_dict = json.load(file)
-        #SQLentries = [(entry['PMID'], entry['Text']) for entry in entries_dict]
-        break
-    ####################################################
-
-    # Instantiate a lists
-    pmcids = []
-    methods = []
-    # Save only those where methods is not None
-    for pmcid, methods_sect in SQLentries:
-        if methods_sect is not None:
-            pmcids.append(pmcid)
-            methods.append(methods_sect)
-
-    print(f"Methods fetched: {len(SQLentries)}, from which {len(methods)} are not None", )
-    
-
-    # Create docs to split into sentences. Disable components to speed it up
-    # Create docs in batches. It gets killed otherwise.
     batch_size = 50  # Adjust batch size based on your memory constraints
-
     # Open the output file outside the loop
     with open(args.output, 'w') as fout:
         print("Getting annotations for methods...")
 
-        # Process the documents in batches
+        # Process the documents in batches. Disable components of nlp.pipe to speed up the process
         for doc, pmcid in tqdm(zip(nlp.pipe(methods, disable=['tagger', 'ner', 'lemmatizer', 'textcat'], batch_size=batch_size), pmcids), total=len(pmcids)):
             
             # Get annotations ready for prodigy
@@ -257,19 +260,6 @@ def main(*args, **kwargs):
             fout.flush()
 
     print(f'Annotations saved in {args.output}')
-
-    # # Loop through the data in the data folder, run the model on the entries, and turn the model output into prodigy annotations format
-    # with open(args.output,'w') as fout:
-    #     print("Getting annotations for methods...")
-        
-    #     for row in tqdm(SQLentries):
-    #         pmcid, methods = row
-    #         if methods is not None:
-    #             methods_annotated = get_annotations(methods, pmcid, classifier, tokenizer)
-    #             json.dump(methods_annotated, fout)
-    #             fout.write('\n')
-    #             fout.flush()
-
 
 if __name__ == '__main__':
     main()
