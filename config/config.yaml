@@ -15,7 +15,7 @@ api_europepmc_params:
   # Used in previous script to be able to rerun the script without redl everything. Maybe still needed
   # For the new downloading script
   pmcid_human_file: ./data/pmcid_humans.txt
-  db_info_articles: ./data/db_info_articles_test.sqlite3
+  db_info_articles: ./data/db_info_articles.sqlite3
   record_files: true
   xml_origin: api # can be either 'api' if connect to the api or 'files' if use dl files
 
@@ -35,4 +35,31 @@ processing_params:
   list_attr_val_location: ./data/exploration/list_attr_val.csv
   list_sections_location: ./data/exploration/list_sections_details.csv
   list_parent_location: ./data/exploration/list_parent_details.csv
+
+db_params:
+  table_status: status
+  table_sections: sections
+  table_metadata: article_metadata
+ 
+llm_params:
+  model: "./llm_models/mistral_7b_v01"
+  training_set_path: ./data/training_data/final_dataset.hf
+  model_outdir: ./llm_models/
+  model_train_name: dev_mistral_lora
+  generation_params:
+    context_size: 2048
+    # n_threads: 10
+    # n_gpu_layers: 8
+    temperature: 0
+    do_sample: True
+    top_p: 0.95
+    top_k: 40
+    max_new_tokens: 512
+    repetition_penalty: 1.1
+  lora_config: 
+    r: 16
+    target_modules: ["q_proj", "v_proj"]
+    task_type: CAUSAL_LM
+    lora_alpha: 32
+    lora_dropout: 0.05
   

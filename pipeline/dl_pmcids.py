@@ -13,7 +13,7 @@ from tqdm import tqdm
 import urllib.parse
 
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
-
+logging.basicConfig(level = logging.INFO)
 logger = logging.getLogger(__name__)
 
 
@@ -144,6 +144,7 @@ def main():
                 with open(pmcid_human_file, "a") as f_h:
                     f_h.write(f"{result_pmcid}")
                     f_h.write("\n")
+
             pbar.update(n=1)
             exception = future.exception()
             if exception:
