@@ -3,7 +3,7 @@
 */data/articles/*
 */data/pmcid_txt.gz
 */data/*.txt
-*/data/*
+*/data/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
