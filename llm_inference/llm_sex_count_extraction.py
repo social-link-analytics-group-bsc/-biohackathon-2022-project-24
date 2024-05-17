@@ -8,7 +8,7 @@ import random
 import json
 from tqdm import tqdm
 from threading import Thread
-from prompt_instructions import prompt_instruction
+from utils.prompt_instructions import prompt_instruction
 from llm_generate_response import LLMHandler
 
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
