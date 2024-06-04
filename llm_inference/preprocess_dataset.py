@@ -98,9 +98,9 @@ def _create_prompt(example, prompt_instruction):
 def _create_prompt_text(example, prompt_instruction):
     example[
         "prompt_text"
-    ] = f"""{example['prompt_instruction']}
+        ] = f"""####Instructions:\n{example['prompt_instruction']}
     \n
-    {example['text']}
+    ####Text:\n{example['text']}
     """
     return example
 
@@ -109,7 +109,7 @@ def _create_chat_data(example):
     example["message"] = [
         {
             "role": "user",
-            "content": f"""{example['prompt_instruction']}\n##Article text\n{example['text']}""",
+            "content": f"""####Instructions:\n{example['prompt_instruction']}\n##Article text\n{example['text']}""",
         },
         {"role": "assistant", "content": example['answer_training']},
     ]
