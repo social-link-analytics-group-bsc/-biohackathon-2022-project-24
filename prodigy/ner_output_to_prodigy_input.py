@@ -43,9 +43,10 @@ def get_prodigy_tokens(text, tokenizer):
             'id': id,
             'start': start,
             'end': end,
-            'disabled': not is_number(token), # Disable all non-numeric words
             'ws': id+1 == len(tokens) or end != offset_mappings[id+1][0] # Whitespace
         }
+        if not is_number(token):
+            token_dict['style'] = {'color': 'grey'} # Color in grey all non-numeric words
         prodigy_tokens.append(token_dict)
 
     return prodigy_tokens
@@ -241,7 +242,7 @@ def main(*args, **kwargs):
     DB_FILE = config_all["database"]["db_file"]
     print("Fetching methods sections from database...")
     # Second argument is the limit of entries you want to gather with the query, remove this here and from the function if you want to get all
-    pmcids, methods = get_methods_from_db(DB_FILE, 2000, 0) 
+    pmcids, methods = get_methods_from_db(DB_FILE, 2000, 2000) 
 
     batch_size = 50  # Adjust batch size based on your memory constraints
     # Open the output file outside the loop
