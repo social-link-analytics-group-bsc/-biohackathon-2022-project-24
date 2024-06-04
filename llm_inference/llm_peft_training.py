@@ -4,7 +4,7 @@ import yaml
 import sys
 import logging
 import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM, Trainer, TrainingArguments, DataCollatorForLanguageModeling
+from transformers import AutoTokenizer, AutoModelForCausalLM, Trainer, TrainingArguments, DataCollatorForLanguageModeling, BitsAndBytesConfig
 import datasets
 from datasets import DatasetDict
 from peft import (
@@ -15,9 +15,8 @@ from peft import (
     PeftModel,
     TaskType,
 )
-from trl import SFTTrainer
 from accelerate import infer_auto_device_map
-
+from peft import prepare_model_for_kbit_training
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
 logger = logging.getLogger(
@@ -31,13 +30,16 @@ logging.basicConfig(level=logging.INFO)
 
 def main():
 
+    print(torch.cuda.device_count())
+    print()
+
+
     # Load the config path
     config_path = os.path.join(os.path.dirname(__file__), "../config", "config.yaml")
     config_all = yaml.safe_load(open(config_path))
 
     # LLM setting
     model_id = config_all["llm_params"]["model"]
-    # model = AutoModelForCausalLM.from_pretrained(model_id)
 
     model_outdir = config_all['llm_params']['model_outdir']
     model_train_name = config_all["llm_params"]['model_train_name']
@@ -82,49 +84,52 @@ def main():
     max_length = max([len(x) for x in tokenized_train_ds['training']['input_ids']])
     print(max_length)
 
-    # # Retokenized with the max token length
-    # tokenizer = AutoTokenizer.from_pretrained(
-    #     model_id,
-    #     padding_side="left",  # Add padding as use less memory for training
-    #     add_eos_token=True,
-    #     add_bos_token=True,
-    #     truncation=True,
-    #     max_length=max_length,
-    #     padding="max_length",
-    # )
+    # Retokenized with the max token length
+    tokenizer = AutoTokenizer.from_pretrained(
+        model_id,
+        padding_side="left",  # Add padding as use less memory for training
+        add_eos_token=True,
+        add_bos_token=True,
+        truncation=True,
+        max_length=max_length,
+        padding="max_length",
+    )
 
-    # tokenized_train_ds = training_set.map(lambda x: {"input_ids": tokenizer.apply_chat_template(x["message"], tokenize=True, add_generation_prompt=False)})
+    tokenizer.pad_token = tokenizer.unk_token
+
+    tokenized_train_ds = training_set.map(lambda x: {"input_ids": tokenizer.apply_chat_template(x["message"], tokenize=True, add_generation_prompt=False)})
 
 
     # Load LORA config
-    lora_config = LoraConfig(
-    r=16,
-    lora_alpha=32,
-    lora_dropout=0.05,
-    bias="none",
-    task_type="CAUSAL_LM",
-)
+    lora_config = config_all["llm_params"]["lora_config"]
+    peft_config = LoraConfig(**lora_config)
+
+
+    # Load bitsandBytes config
+    try:
+        bits_and_bytes_config = config_all["llm_params"]["bits_and_bytes_config"]
+        bits_and_bytes_config["bnb_4bit_compute_dtype"] = torch.float16
+        bitsandbytes = BitsAndBytesConfig(**bits_and_bytes_config)
+    except KeyError:
+        bitsandbytes = None
+    
+    # Load the model with bitsandbytes
     model = AutoModelForCausalLM.from_pretrained(
       model_id,
-      torch_dtype=torch.float16,
-      # device_map='balanced',
-      # device_map=device_map,
+      quantization_config=bitsandbytes
     )
-    model = get_peft_model(model, lora_config)
-    # device_map = infer_auto_device_map(model, max_memory={0: "55GiB", 1: "55GiB", "cpu": "30GiB"})
+    # Prepare the model for peft training with the quantization params
+    model = prepare_model_for_kbit_training(model)
+
+    # Load the model in peft mode
+    model = get_peft_model(model, peft_config)
     data_collator = DataCollatorForLanguageModeling(tokenizer, mlm=False)
 
+    # Instantiate the trainer
+    config_trainers_params = config_all["llm_params"]["trainer_params"]
     training_args = TrainingArguments(
         output_dir=f"{model_outdir}/{model_train_name}",
-        learning_rate=2e-5,
-        per_device_train_batch_size=10,
-        per_device_eval_batch_size=10,
-        num_train_epochs=3,
-        weight_decay=0.01,
-        evaluation_strategy="epoch",
-        save_strategy="epoch",
-        load_best_model_at_end=True,
-        push_to_hub=False,
+        **config_trainers_params,
     )
     trainer = Trainer(
         model=model,
@@ -136,48 +141,39 @@ def main():
         # compute_metrics=compute_metrics,
     )
 
-    # trainer = SFTTrainer(
-    #     model,
-    #     args = training_args,
-    #     train_dataset=tokenized_train_ds['training'],
-    #     eval_dataset=tokenized_train_ds['validation'],
-    #     dataset_text_field="input_ids",
-    #     peft_config=lora_config)
     trainer.train()
 
     # Loading the LORA model
-    # lora_model = get_peft_model(model, lora_config)
-    # lora_model.print_trainable_parameters()
+    lora_model = get_peft_model(model, peft_config)
+    lora_model.print_trainable_parameters()
 
     trainer.model.save_pretrained(f"{model_outdir}/{model_train_name}")
 
 
-    del model
-    del trainer
+    # del model
+    # del trainer
+    
+    # # Merging the new model
 
-    peft_config = PeftModel.from_pretrained(f"{model_outdir}/{model_train_name}")
-    model = AutoModelForCausalLM.from_pretrained(
-            peft_config.base_model_name_or_path,
-            load_in_8bit=False,
-            return_dict=True,
-            device_map="auto",
-            torch_dtype=torch.float16,
-            low_cpu_mem_usage=True,
-    )
-    model = PeftModel.from_pretrained(
-            model,
-            f"{model_outdir}/{model_train_name}",
-            torch_dtype=torch.float16,
-            device_map="auto",
-    )
-    model.eval()
-    os.makedirs(f"{model_outdir}/{model_train_name}_merged", exist_ok=True)
+    # peft_config = PeftModel.from_pretrained(f"{model_outdir}/{model_train_name}")
+    # model = AutoModelForCausalLM.from_pretrained(
+    #         peft_config.base_model_name_or_path,
+    #         quantization_config=bitsandbytes,
+    #         low_cpu_mem_usage=True,
+    # )
+    # model = PeftModel.from_pretrained(
+    #         model,
+    #         f"{model_outdir}/{model_train_name}",
+    #         device_map="auto",
+    # )
+    # model.eval()
+    # os.makedirs(f"{model_outdir}/{model_train_name}_merged", exist_ok=True)
 
-    merged_model = model.merge_and_unload()
-    merged_model.save_pretrained(f"{model_outdir}/{model_train_name}_merged")
+    # merged_model = model.merge_and_unload()
+    # merged_model.save_pretrained(f"{model_outdir}/{model_train_name}_merged")
 
-    tokenizer = AutoTokenizer.from_pretrained(model_id)
-    tokenizer.save_pretrained(f"{model_outdir}/{model_train_name}_merged")
+    # tokenizer = AutoTokenizer.from_pretrained(model_id)
+    # tokenizer.save_pretrained(f"{model_outdir}/{model_train_name}_merged")
 
 
 if __name__ == "__main__":

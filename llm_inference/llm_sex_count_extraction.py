@@ -1,15 +1,13 @@
-import re
 import duckdb
 import sys
 import os
 import yaml
 import logging
-import random
 import json
 from tqdm import tqdm
-from threading import Thread
-from prompt_instructions import prompt_instruction
-from llm_generate_response import LLMHandler
+from utils.prompt_instructions import prompt_instruction_3 as prompt_instruction
+from llm_inference import LLMHandler
+
 
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
@@ -55,6 +53,9 @@ def get_text_from_db(conn, table_sections):
     cursor.close()
     conn.close()
 
+def get_text_from_dataset(file_path):
+    pass
+
 
 def main():
 
@@ -73,15 +74,33 @@ def main():
 
     # LLM setting
     model_path = config_all["llm_params"]["model"]
+    # get the adapter
+    try:
+        adapter_path = config_all["llm_params"]["adapter"]
+    except KeyError:
+        adapter_path = None
     generation_params = config_all["llm_params"]["generation_params"]
+    # Load bitsandBytes config
+    try:
+        bits_and_bytes_config = config_all["llm_params"]["bits_and_bytes_config"]
+
+    except KeyError:
+        bits_and_bytes_config = None
     # Instantiate the model
-    llm_model = LLMHandler(model_path, generation_params, prompt_instruction)
+    llm_model = LLMHandler(model_path, generation_params, prompt_instruction, bits_and_bytes_config, adapter_path=adapter_path)
+
 
     # Parsing the articles
+    n=0
     for methods in get_text_from_db(conn, table_sections):
-        prompt_context, answer = llm_model.passing_article_to_llm(methods)
-
+        prompt, answer = llm_model.passing_article_to_llm(methods)
+        print('METHOD:\n')
+        print(methods)
+        print("ANSWER:\n")
         print(answer)
+        n+=1
+        if n == 5:
+            raise
 
 
 if __name__ == "__main__":
