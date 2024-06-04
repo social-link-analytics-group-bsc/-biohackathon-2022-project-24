@@ -7,7 +7,7 @@ import collections
 import argparse
 from datasets import load_dataset, Dataset, ClassLabel
 
-from prompt_instructions import prompt_instruction_3
+from utils.prompt_instructions import prompt_instruction_3
 
 
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
@@ -99,7 +99,7 @@ def _create_prompt_text(example, prompt_instruction):
     example[
         "prompt_text"
     ] = f"""{example['prompt_instruction']}
-    ## Article text
+    \n
     {example['text']}
     """
     return example
@@ -129,14 +129,15 @@ def _drop_unused_data(dataset: Dataset) -> Dataset:
     Use the built-in function for dropping columns.
     Need the dataset and not an example here
     Dropping all the columns except:
-    - answer: answer for the model
+    - answer: the number associated to the type of answer for stratified sampling
+    - answer_training: answer for the model
     - pmcid: pmcid to be able to match the article
-    - prompt: needed to generate the prompt
+    - prompt_instruction: the instruction choose for the model
     - _annotator_id: The annotator in case random on that is important
+    - message: formated prompt for training
+    - text: original method text
     """
     col_to_drop = [
-        "text",
-        "reason",
         "spans",
         "tokens",
         "meta",
@@ -180,7 +181,8 @@ def main():
 
     dataset = load_dataset("json", data_files=args.data, split="train")
     dataset = dataset.map(_extract_labels)
-    dataset = dataset.map(_create_description)
+    # Not using the reason (transforming short answer to long description)
+    # dataset = dataset.map(_create_description)
     dataset = dataset.map(_transform_key_meta)
     dataset = dataset.map(_create_full_json_answer)
     dataset = dataset.map(
@@ -189,6 +191,8 @@ def main():
     dataset = dataset.map(_create_chat_data)
     dataset = cast_label(dataset)
     dataset = _drop_unused_data(dataset)
+    for i, k  in enumerate(dataset[0:2]):
+        print(k, dataset[i][k])
     print_simple_info(dataset)
 
     # Save the dataset as an arrow file

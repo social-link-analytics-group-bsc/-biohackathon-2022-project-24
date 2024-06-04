@@ -2,7 +2,7 @@ import json
 
 
 json_response = {
-    "reason": "str",
+    "answer": "str",
     "labels": {
         "sample": {
             "total": "int",
@@ -39,9 +39,9 @@ prompt_instruction_2 = f"""data_source": "Text extracted from research article",
 "Validated the data against the context in the text",
 "Calculated total sample size, men and women counts",
 "Don't make assumption of the repartition if no direct mentions",
-“If the answer is clear, stated in reason: `information clear`”,
-“If it is not about human subject stated in reason: `no human subject`”,
-“If the information is not clear stated in reason: `information not clear`”,
+“If the answer is clear, stated in answer: `accept`”,
+“If it is not about human subject stated in answer: `ignore`”,
+“If the information is not clear stated in answer: `reject`”,
 "Output the decision process  in json format following the format: {json_string}"""
 
 
