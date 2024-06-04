@@ -42,10 +42,10 @@ db_params:
   table_metadata: article_metadata
  
 llm_params:
-  # model: "./llm_models/mistral_7b_instruct_v02"
+  model: "./llm_models/mistral_7b_instruct_v03"
   # model: "./llm_models/mistral_7b_v03"
   # adapter: "./llm_models/dev_mistral_7b_lora"
-  model: "./llm_models/mixtral_8x7b_v01"
+  # model: "./llm_models/mixtral_8x7b_v01"
   # instruct_model: True
   instruct_model: False
   training_set_path: ./data/training_data/final_dataset.hf
@@ -77,6 +77,7 @@ llm_params:
     lora_dropout: 0.05
   trainer_params:
     bf16: True
+    gradient_checkpointing: True
     learning_rate: 2.0e-5  # Get the .0 or the number is parsed as string
     per_device_train_batch_size: 1
     per_device_eval_batch_size: 1

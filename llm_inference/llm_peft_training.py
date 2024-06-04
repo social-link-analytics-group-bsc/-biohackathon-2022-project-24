@@ -33,6 +33,8 @@ def main():
     print(torch.cuda.device_count())
     print()
 
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 
     # Load the config path
     config_path = os.path.join(os.path.dirname(__file__), "../config", "config.yaml")
@@ -117,7 +119,7 @@ def main():
     model = AutoModelForCausalLM.from_pretrained(
       model_id,
       quantization_config=bitsandbytes
-    )
+    ).to(device)
     # Prepare the model for peft training with the quantization params
     model = prepare_model_for_kbit_training(model)
 
@@ -128,7 +130,7 @@ def main():
     # Instantiate the trainer
     config_trainers_params = config_all["llm_params"]["trainer_params"]
     training_args = TrainingArguments(
-        output_dir=f"{model_outdir}/{model_train_name}",
+        output_dir=f"{model_outdir}/{model_train_name}_{model_id}",
         **config_trainers_params,
     )
     trainer = Trainer(
@@ -138,7 +140,6 @@ def main():
         eval_dataset=tokenized_train_ds["validation"],
         tokenizer=tokenizer,
         data_collator=data_collator,
-        # compute_metrics=compute_metrics,
     )
 
     trainer.train()
@@ -147,7 +148,7 @@ def main():
     lora_model = get_peft_model(model, peft_config)
     lora_model.print_trainable_parameters()
 
-    trainer.model.save_pretrained(f"{model_outdir}/{model_train_name}")
+    trainer.model.save_pretrained(f"{model_outdir}/{model_train_name}_{model_id}")
 
 
     # del model
