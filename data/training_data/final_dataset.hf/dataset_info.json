@@ -1,0 +1,74 @@
+{
+  "builder_name": "json",
+  "citation": "",
+  "config_name": "default",
+  "dataset_name": "json",
+  "dataset_size": 26301472,
+  "description": "",
+  "download_checksums": {
+    "/home/olivier/git/pro/bsc/biohackathon-2022-project-24/./data/training_data/final_annotations_03_06_2024.jsonl": {
+      "num_bytes": 62470624,
+      "checksum": null
+    }
+  },
+  "download_size": 62470624,
+  "features": {
+    "text": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "answer": {
+      "names": [
+        "accept",
+        "reject",
+        "ignore"
+      ],
+      "_type": "ClassLabel"
+    },
+    "_annotator_id": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "pmcid": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "answer_training": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "prompt_instruction": {
+      "dtype": "string",
+      "_type": "Value"
+    },
+    "message": [
+      {
+        "content": {
+          "dtype": "string",
+          "_type": "Value"
+        },
+        "role": {
+          "dtype": "string",
+          "_type": "Value"
+        }
+      }
+    ]
+  },
+  "homepage": "",
+  "license": "",
+  "size_in_bytes": 88772096,
+  "splits": {
+    "train": {
+      "name": "train",
+      "num_bytes": 26301472,
+      "num_examples": 287,
+      "dataset_name": "json"
+    }
+  },
+  "version": {
+    "version_str": "0.0.0",
+    "major": 0,
+    "minor": 0,
+    "patch": 0
+  }
+}
