@@ -29,7 +29,7 @@ def _extract_labels(example):
         for span in example["spans"]:
             if span["token_start"] == span["token_end"]:
                 label = span["label"]
-                #FIXME As soon as it is fixed in prodigy, can remove the if
+                # FIXME As soon as it is fixed in prodigy, can remove the if
                 if label == "n_fem":
                     label = "n_female"
                 # if label not in token_to_label.keys():
@@ -43,7 +43,7 @@ def _extract_labels(example):
                     span["token_start"], span["token_end"] + 1
                 ):  # TODO: finish this
                     label = span["label"]
-                    #FIXME As soon as it is fixed in prodigy, can remove the if
+                    # FIXME As soon as it is fixed in prodigy, can remove the if
                     if label == "n_fem":
                         label = "n_female"
                     value = example["tokens"][span["token_start"]]["id"]
@@ -51,30 +51,6 @@ def _extract_labels(example):
     except KeyError:  # if there are no spans
         token_to_label = {}
     example["labels"] = token_to_label
-    return example
-
-
-def _create_description(example):
-    """
-    Parse the example and transform the type of answer to a text
-    The different answers are:
-        - 'accept': Accept: All information is clear and about human subject
-        - 'ignore': Ignore: This is not about human subjects
-        - 'reject': Reject: There are label(s) but at least one is confusing.
-    """
-    if example["answer"] == "accept":
-        example["reason"] = "Accept: All information is clear and about human subject"
-    elif example["answer"] == "reject":
-        example[
-            "reason"
-        ] = """Reject: There are label(s) but at least one is confusing.   
-                             There is at least 1 label that you are doubting if or how to annotate based on the provided rules."""
-    elif example["answer"] == "ignore":
-        example[
-            "reason"
-        ] = """There are no labels of interest. 
-There are no labels of interest. For instance, the paper is about animals (not human), cell lines, strains, etc. In other words, there are no numbers or percentages of human subjects, males or females."""
-
     return example
 
 
@@ -95,23 +71,13 @@ def _create_prompt(example, prompt_instruction):
     return example
 
 
-def _create_prompt_text(example, prompt_instruction):
-    example[
-        "prompt_text"
-        ] = f"""####Instructions:\n{example['prompt_instruction']}
-    \n
-    ####Text:\n{example['text']}
-    """
-    return example
-
-
 def _create_chat_data(example):
     example["message"] = [
         {
             "role": "user",
-            "content": f"""####Instructions:\n{example['prompt_instruction']}\n##Article text\n{example['text']}""",
+            "content": f"""####Instructions:\n{example['prompt_instruction']}\n####Article\n{example['text']}""",
         },
-        {"role": "assistant", "content": example['answer_training']},
+        {"role": "assistant", "content": example["answer_training"]},
     ]
     return example
 
@@ -191,7 +157,7 @@ def main():
     dataset = dataset.map(_create_chat_data)
     dataset = cast_label(dataset)
     dataset = _drop_unused_data(dataset)
-    for i, k  in enumerate(dataset[0:2]):
+    for i, k in enumerate(dataset[0:2]):
         print(k, dataset[i][k])
     print_simple_info(dataset)
 

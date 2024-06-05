@@ -55,16 +55,10 @@ data_source": "Text extracted from research article",
 
 To take a decision follow these instructions: 
 
-We are only interested in the number of human subjects:
-E.g.:  individuals, participants, males, females, lung from 40 patients, 
-We exclude:
-Cells, strains or cells lines. E.g. 30 cells, what about human parts (e.g. human molars)?
-Animals different from human. E.g. 40 mice, 
+We are only interested in the number of human subjects: E.g.:  individuals, participants, males, females, lung from 40 patients, 
+We exclude: Cells, strains or cells lines. E.g. 30 cells, what about human parts (e.g. human molars)? Animals different from human. E.g. 40 mice, 
 Bear in mind that one subject may have multiple samples. We want the number of individuals not the number of samples. E.g. 20 samples from 10 patients. (N=10).
-Partial numbers: Partial number of labels should be annotated with the ‘<label>_P’ label. 
-Use partial numbers when you are sure that they can be added. Do we agree on this?
-E.g.
-When no total numbers appear then should they all be considered as partial…?
+Use partial numbers when you are sure that they can be added. E.g. When no total numbers appear then should they all be considered as partial…?
 
 
 Filtering samples. Options:
@@ -72,8 +66,7 @@ We will take the largest number of samples because:
 These are the samples considered for the analysis
 There can be multiple filtering steps, different subsets of samples used for different experiments,..
 There will be cases in which the number of males and females is specified before and/or after filtering steps. What should we do here?
-When the sex of the samples is not explicitly there but it is clear from the context, annotate the samples as N_males / N_females instead of N_samples. Can a number correspond to two labels?
-E.g. Study about pregnancy: 10 subjects… (N_females = 10 & N=10) → Accept
+When the sex of the samples is not explicitly there but it is clear from the context, annotate the samples as N_males / N_females instead of N_samples. Can a number correspond to two labels? E.g. Study about pregnancy: 10 subjects… (N_females = 10 & N=10) → Accept
 
 After annotating, select:
 Accept: All information is clear and about human subject 
@@ -89,6 +82,8 @@ Human
 Male / Female / 
 Participants
 
-The answer should be in json format:\n{json_string}
+The answer should be in json format:\n{json_string}. 
+Only answer the json no added text.
+If there is no text, do not invent response. Only output the json with Ignore and all the fields to None
 The text you need to extract the information from:
 """
