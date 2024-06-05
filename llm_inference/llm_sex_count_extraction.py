@@ -6,7 +6,7 @@ import logging
 import json
 from tqdm import tqdm
 from utils.prompt_instructions import prompt_instruction_3 as prompt_instruction
-from llm_inference import LLMHandler
+from llm_inference import LLMHandler, LLMHandlerInstruct
 
 
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
@@ -38,9 +38,10 @@ def get_text_from_db(conn, table_sections):
     # Execute a SELECT query to retrieve the pmcid values
     # Fetch rows with subjects or methods
     cursor = conn.cursor()
-    cursor.execute(f"SELECT SUBJECTS, METHODS FROM {table_sections}")
+    cursor.execute(f"SELECT SUBJECTS, METHODS FROM {table_sections} WHERE METHODS IS NOT NULL OR SUBJECTS IS NOT NULL")
     row = cursor.fetchone()
     # Yield data if either subjects or methods are present
+    # FIXME Not working still return if None in the methods
     while row:
         if row[0]:
             yield row[0]  # Yield subjects
@@ -73,10 +74,14 @@ def main():
     conn = duckdb.connect(DB_FILE)
 
     # LLM setting
-    model_path = config_all["llm_params"]["model"]
+    model_outdir = config_all['llm_params']['model_outdir']
+    model_name = config_all["llm_params"]["model_name"]
+    model_path = f"{model_outdir}/{model_name}"
+    instruct_model = config_all["llm_params"]['instruct_model']
     # get the adapter
     try:
-        adapter_path = config_all["llm_params"]["adapter"]
+        adapter_name = config_all["llm_params"]["adapter"]
+        adapter_path = f"{model_outdir}/{adapter_name}"
     except KeyError:
         adapter_path = None
     generation_params = config_all["llm_params"]["generation_params"]
@@ -87,19 +92,22 @@ def main():
     except KeyError:
         bits_and_bytes_config = None
     # Instantiate the model
-    llm_model = LLMHandler(model_path, generation_params, prompt_instruction, bits_and_bytes_config, adapter_path=adapter_path)
+    if instruct_model:
+        llm_model = LLMHandlerInstruct(model_path, generation_params, prompt_instruction, bits_and_bytes_config, adapter_path=adapter_path)
+    else:
+        llm_model = LLMHandler(model_path, generation_params, prompt_instruction, bits_and_bytes_config, adapter_path=adapter_path)
 
 
     # Parsing the articles
     n=0
     for methods in get_text_from_db(conn, table_sections):
         prompt, answer = llm_model.passing_article_to_llm(methods)
-        print('METHOD:\n')
-        print(methods)
+        # print('PROMPT:\n')
+        # print(prompt)
         print("ANSWER:\n")
         print(answer)
         n+=1
-        if n == 5:
+        if n == 10:
             raise
 
 
