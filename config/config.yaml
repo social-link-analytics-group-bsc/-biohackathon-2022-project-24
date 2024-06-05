@@ -42,15 +42,15 @@ db_params:
   table_metadata: article_metadata
  
 llm_params:
-  model: "./llm_models/mistral_7b_instruct_v03"
+  # model: "./llm_models/mistral_7b_instruct_v03"
   # model: "./llm_models/mistral_7b_v03"
-  # adapter: "./llm_models/dev_mistral_7b_lora"
-  # model: "./llm_models/mixtral_8x7b_v01"
-  # instruct_model: True
-  instruct_model: False
+  adapter: "dev_mixtral_8x7b_instruct_v01"
+  model_name: "mixtral_8x7b_instruct_v01"
+  instruct_model: True
+  # instruct_model: False
   training_set_path: ./data/training_data/final_dataset.hf
   model_outdir: ./llm_models/
-  model_train_name: dev_
+  model_train_name: dev
   bits_and_bytes_config:
     load_in_4bit: True
     bnb_4bit_quant_type: nf4
@@ -67,11 +67,11 @@ llm_params:
     do_sample: True
     top_p: 0.95
     top_k: 40
-    max_new_tokens: 5000
-    repetition_penalty: 1.1
+    max_new_tokens: 120
+    repetition_penalty: 1.0
   lora_config: 
     r: 16
-    target_modules: ["q_proj", "v_proj"]
+    target_modules: ["q_proj", "q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj", "lm_head"]
     task_type: CAUSAL_LM
     lora_alpha: 32
     lora_dropout: 0.05
