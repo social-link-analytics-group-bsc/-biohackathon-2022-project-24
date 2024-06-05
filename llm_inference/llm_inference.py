@@ -1,9 +1,7 @@
-import re
 import logging
 import torch
 from peft import PeftModel, PeftConfig
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
-from accelerate import infer_auto_device_map
 
 
 logger = logging.getLogger(
@@ -21,8 +19,9 @@ class LLMHandler:
         bits_and_bytes_config=None,
         adapter_path=None,
     ):
-        self.prompt_instruction = prompt_instruction
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self._print_state()
+        self.prompt_instruction = prompt_instruction
         self.generation_params = generation_params
         self._generate_bits_and_bytes(bits_and_bytes_config)
         self._load_model(model_path, adapter_path)
@@ -49,7 +48,9 @@ class LLMHandler:
             self.tokenizer = AutoTokenizer.from_pretrained(
                 config.base_model_name_or_path
             )
-            self.model = PeftModel.from_pretrained(self.model, adapter_path)
+
+            # self.tokenizer.pad_token = self.tokenizer.eos_token  # Most LLMs don't have a pad token by default
+            # self.model = PeftModel.from_pretrained(self.model, adapter_path)
         # If no adapter_path load base model
         else:
             self.model = AutoModelForCausalLM.from_pretrained(
@@ -58,7 +59,8 @@ class LLMHandler:
                 device_map=self.device,
                 quantization_config=self.quantization,
             )
-        self.tokenizer = AutoTokenizer.from_pretrained(model_path)
+            self.tokenizer = AutoTokenizer.from_pretrained(model_path)
+            # self.tokenizer.pad_token = self.tokenizer.eos_token  # Most LLMs don't have a pad token by default
 
     def _print_state(self):
         """
@@ -95,7 +97,7 @@ class LLMHandler:
         return f"{prompt_instruction}\n{text}"
 
     def encode_input(self, message):
-        inputs = self.tokenizer(message, return_tensors="pt").to(self.device)
+        inputs = self.tokenizer(message, return_tensors="pt", add_generation_prompt=True).to(self.device)
         return inputs
 
     def generate_output(self, encoded):
@@ -104,7 +106,7 @@ class LLMHandler:
 
     def decode_output(self, generation_output):
         token_output = generation_output[0]
-        text_output = self.tokenizer.decode(token_output)
+        text_output = self.tokenizer.decode(token_output, skip_special_tokens=True)
         return text_output
 
     def separate_prompt_and_answer(self, inputs, output):
@@ -121,10 +123,10 @@ class LLMHandler:
         inputs = self.encode_input(prompt_message)
 
         output = self.generate_output(inputs)
-        # text_output = self.decode_output(generation_output)
         prompt_context, answer = self.separate_prompt_and_answer(inputs, output)
 
         return prompt_context, answer
+        
 
 
 class LLMHandlerInstruct(LLMHandler):
@@ -134,24 +136,16 @@ class LLMHandlerInstruct(LLMHandler):
         return generation_output
 
     def encode_input(self, message):
-
         messages = [{"role": "user", "content": message}]
         inputs = self.tokenizer.apply_chat_template(
-            messages, add_generation_prompt=True, return_tensors="pt"
+            messages, return_tensors="pt"
         ).to(self.device)
         return inputs
 
     def separate_prompt_and_answer(self, inputs, output):
-        token_output = output[0]
-        text_output = self.tokenizer.decode(token_output)
-        pattern = re.compile(r"\[INST\]\s*(.*?)\s*\[/INST\](.*)", re.DOTALL)
-        match = pattern.match(text_output)
-        if match:
-            prompt_context = match.group(1).strip()
-            answer = match.group(2).strip()
-            return prompt_context, answer
-        else:
-            return None, text_output.strip()
+        answer = tokenizer.decode(outputs[0][inputs['input_ids'].size(1):], skip_special_tokens=True) 
+        # answer = self.tokenizer.decode(output[0])
+        return None, answer
 
 
 def main():

@@ -17,6 +17,7 @@ from peft import (
 )
 from accelerate import infer_auto_device_map
 from peft import prepare_model_for_kbit_training
+import utils.print_cuda as print_cuda
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
 logger = logging.getLogger(
@@ -41,15 +42,17 @@ def main():
     config_all = yaml.safe_load(open(config_path))
 
     # LLM setting
-    model_id = config_all["llm_params"]["model"]
-
     model_outdir = config_all['llm_params']['model_outdir']
-    model_train_name = config_all["llm_params"]['model_train_name']
+    model_name = config_all["llm_params"]["model_name"]
+    model_path = f"{model_outdir}/{model_name}"
+    model_train_name = f"{config_all['llm_params']['model_train_name']}_{model_name}"
+    model_train_path = f"{model_outdir}/{model_train_name}"
 
     lora_config = config_all["llm_params"]["lora_config"]
 
     # Loading and preparing the training set
     training_set_path = config_all["llm_params"]["training_set_path"]
+    # FIXME Need to move that into the prep dataset to ensure reproductiblity (but the seed should be enough)
     ds_training_set = datasets.load_from_disk(training_set_path)
     # Split a first time to gain the train set and the test set
     ds_training_set = ds_training_set.train_test_split(
@@ -72,7 +75,7 @@ def main():
 
     # Tokenizing the training set
     tokenizer = AutoTokenizer.from_pretrained(
-        model_id,
+        model_path,
         padding_side="left",  # Add padding as use less memory for training
         add_eos_token=True,
         add_bos_token=True,
@@ -88,7 +91,7 @@ def main():
 
     # Retokenized with the max token length
     tokenizer = AutoTokenizer.from_pretrained(
-        model_id,
+        model_path,
         padding_side="left",  # Add padding as use less memory for training
         add_eos_token=True,
         add_bos_token=True,
@@ -100,6 +103,7 @@ def main():
     tokenizer.pad_token = tokenizer.unk_token
 
     tokenized_train_ds = training_set.map(lambda x: {"input_ids": tokenizer.apply_chat_template(x["message"], tokenize=True, add_generation_prompt=False)})
+    # print(tokenized_train_ds['training'][0]['message'])
 
 
     # Load LORA config
@@ -117,9 +121,9 @@ def main():
     
     # Load the model with bitsandbytes
     model = AutoModelForCausalLM.from_pretrained(
-      model_id,
+      model_path,
       quantization_config=bitsandbytes
-    ).to(device)
+    )
     # Prepare the model for peft training with the quantization params
     model = prepare_model_for_kbit_training(model)
 
@@ -127,10 +131,13 @@ def main():
     model = get_peft_model(model, peft_config)
     data_collator = DataCollatorForLanguageModeling(tokenizer, mlm=False)
 
+    # Print the mem used
+    print_cuda.print_state()
+
     # Instantiate the trainer
     config_trainers_params = config_all["llm_params"]["trainer_params"]
     training_args = TrainingArguments(
-        output_dir=f"{model_outdir}/{model_train_name}_{model_id}",
+        output_dir=f"{model_outdir}/{model_train_name}",
         **config_trainers_params,
     )
     trainer = Trainer(
@@ -148,7 +155,7 @@ def main():
     lora_model = get_peft_model(model, peft_config)
     lora_model.print_trainable_parameters()
 
-    trainer.model.save_pretrained(f"{model_outdir}/{model_train_name}_{model_id}")
+    trainer.model.save_pretrained(model_train_path)
 
 
     # del model
