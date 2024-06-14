@@ -47,26 +47,10 @@ def main():
     # Load bitsandBytes config
     try:
         bits_and_bytes_config = config_all["llm_params"]['inference']["bits_and_bytes_config"]
+        adapter_path = f"{model_outdir}{model_name}_lora_4bits"
     except KeyError:
         bits_and_bytes_config = None
-
-    adapter = config_all['llm_params']['inference']['adapter']
-    if adapter['loading'] is True:
-        if adapter['quantization'] is not False:
-            adapter_path = f"{model_outdir}{model_name}_lora_{adapter['quantization']}"
-        else:
-            adapter_path = f"{model_outdir}{model_name}_lora"
-    else:
-        adapter_path = None
-
-    # Instantiate the model
-    logger.info('Load the model in the GPU(s)')
-    if instruct_model:
-        llm_model = LLMHandlerInstruct(model_path, generation_params, bits_and_bytes_config=bits_and_bytes_config, adapter_path=adapter_path)
-    else:
-        llm_model = LLMHandler(model_path, generation_params,  bits_and_bytes_config=bits_and_bytes_config, adapter_path=adapter_path)
-    logger.info("Model loaded")
-
+        adapter_path = f"{model_outdir}{model_name}_lora"
 
     # Load bitsandBytes config
     try:
