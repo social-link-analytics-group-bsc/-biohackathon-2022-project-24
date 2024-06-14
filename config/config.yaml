@@ -47,7 +47,9 @@ llm_params:
   training_set_path: ./data/training_data/final_dataset.hf
   inference:
     model_name: "mistral_7b_instruct_v03"
-    adapter_name: 
+    adapter:
+      loading: True
+      quantization: 4bits
     instruct_model: True
     # instruct_model: False
     bits_and_bytes_config:
