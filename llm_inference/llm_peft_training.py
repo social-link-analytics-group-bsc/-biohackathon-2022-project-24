@@ -15,8 +15,8 @@ from peft import (
     PeftModel,
     TaskType,
 )
-from accelerate import infer_auto_device_map
 from peft import prepare_model_for_kbit_training
+from llm_inference import LLMHandler, LLMHandlerInstruct
 import utils.print_cuda as print_cuda
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
@@ -33,22 +33,52 @@ def main():
 
     print(torch.cuda.device_count())
     print()
-
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-
     # Load the config path
     config_path = os.path.join(os.path.dirname(__file__), "../config", "config.yaml")
     config_all = yaml.safe_load(open(config_path))
 
     # LLM setting
     model_outdir = config_all['llm_params']['model_outdir']
-    model_name = config_all["llm_params"]["model_name"]
-    model_path = f"{model_outdir}/{model_name}"
-    model_train_name = f"{config_all['llm_params']['model_train_name']}_{model_name}"
-    model_train_path = f"{model_outdir}/{model_train_name}"
+    model_name = config_all["llm_params"]['inference']["model_name"]
+    model_path = f"{model_outdir}{model_name}"
+    instruct_model = config_all["llm_params"]['inference']['instruct_model']
+    # Get the adapter
+    generation_params = config_all["llm_params"]['inference']["generation_params"]
+    # Load bitsandBytes config
+    try:
+        bits_and_bytes_config = config_all["llm_params"]['inference']["bits_and_bytes_config"]
+    except KeyError:
+        bits_and_bytes_config = None
 
-    lora_config = config_all["llm_params"]["lora_config"]
+    adapter = config_all['llm_params']['inference']['adapter']
+    if adapter['loading'] is True:
+        if adapter['quantization'] is not False:
+            adapter_path = f"{model_outdir}{model_name}_lora_{adapter['quantization']}"
+        else:
+            adapter_path = f"{model_outdir}{model_name}_lora"
+    else:
+        adapter_path = None
+
+    # Instantiate the model
+    logger.info('Load the model in the GPU(s)')
+    if instruct_model:
+        llm_model = LLMHandlerInstruct(model_path, generation_params, bits_and_bytes_config=bits_and_bytes_config, adapter_path=adapter_path)
+    else:
+        llm_model = LLMHandler(model_path, generation_params,  bits_and_bytes_config=bits_and_bytes_config, adapter_path=adapter_path)
+    logger.info("Model loaded")
+
+
+    # Load bitsandBytes config
+    try:
+        bits_and_bytes_config = config_all["llm_params"]['peft']["bits_and_bytes_config"]
+        bits_and_bytes_config["bnb_4bit_compute_dtype"] = torch.float16
+        bitsandbytes = BitsAndBytesConfig(**bits_and_bytes_config)
+    except KeyError:
+        bitsandbytes = None
+
+
+    # LLM setting
+    lora_config = config_all["llm_params"]['peft']["lora_config"]
 
     # Loading and preparing the training set
     training_set_path = config_all["llm_params"]["training_set_path"]
@@ -82,6 +112,7 @@ def main():
         padding='max_length',
         max_length=15000
     )
+    # To still pad but not training on th pad_token but still on the eos_token
     tokenizer.pad_token = tokenizer.unk_token
     # Need to be 'input_ids' to be passed to a SFTTrainer trainer class
     tokenized_train_ds = training_set.map(lambda x: {"input_ids": tokenizer.apply_chat_template(x["message"], tokenize=True, add_generation_prompt=False)})
@@ -107,22 +138,15 @@ def main():
 
 
     # Load LORA config
-    lora_config = config_all["llm_params"]["lora_config"]
     peft_config = LoraConfig(**lora_config)
 
 
-    # Load bitsandBytes config
-    try:
-        bits_and_bytes_config = config_all["llm_params"]["bits_and_bytes_config"]
-        bits_and_bytes_config["bnb_4bit_compute_dtype"] = torch.float16
-        bitsandbytes = BitsAndBytesConfig(**bits_and_bytes_config)
-    except KeyError:
-        bitsandbytes = None
     
     # Load the model with bitsandbytes
     model = AutoModelForCausalLM.from_pretrained(
       model_path,
-      quantization_config=bitsandbytes
+      quantization_config=bitsandbytes,
+      device_map={'':torch.cuda.current_device()},
     )
     # Prepare the model for peft training with the quantization params
     model = prepare_model_for_kbit_training(model)
@@ -137,7 +161,7 @@ def main():
     # Instantiate the trainer
     config_trainers_params = config_all["llm_params"]["trainer_params"]
     training_args = TrainingArguments(
-        output_dir=f"{model_outdir}/{model_train_name}",
+        output_dir=adapter_path,
         **config_trainers_params,
     )
     trainer = Trainer(
@@ -155,7 +179,7 @@ def main():
     lora_model = get_peft_model(model, peft_config)
     lora_model.print_trainable_parameters()
 
-    trainer.model.save_pretrained(model_train_path)
+    trainer.model.save_pretrained(adapter_path)
 
 
     # del model

@@ -32,6 +32,10 @@ def _extract_labels(example):
                 # FIXME As soon as it is fixed in prodigy, can remove the if
                 if label == "n_fem":
                     label = "n_female"
+                if label == 'p_fem':
+                    label = "p_female"
+                if label == 'perc_fem':
+                    label = 'perc_female'
                 # if label not in token_to_label.keys():
                 #     print(label)
                 #     raise
@@ -46,6 +50,10 @@ def _extract_labels(example):
                     # FIXME As soon as it is fixed in prodigy, can remove the if
                     if label == "n_fem":
                         label = "n_female"
+                    if label == 'p_fem':
+                        label = "p_female"
+                    if label == 'perc_fem':
+                        label = 'perc_female'
                     value = example["tokens"][span["token_start"]]["id"]
                     token_to_label.setdefault(label, []).append(value)
     except KeyError:  # if there are no spans

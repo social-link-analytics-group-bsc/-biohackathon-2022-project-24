@@ -1,7 +1,17 @@
+import os
+import ast
+import sys
+import yaml
+import json
+import logging
 import logging
 import torch
-from peft import PeftModel, PeftConfig
+import datasets
+from prob_jsonformer import Jsonformer
+from peft import PeftConfig
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
+
+from utils.prompt_instructions import prompt_instruction_3, json_response_format
 
 
 logger = logging.getLogger(
@@ -97,36 +107,35 @@ class LLMHandler:
         return f"{prompt_instruction}\n{text}"
 
     def encode_input(self, message):
-        inputs = self.tokenizer(message, return_tensors="pt", add_generation_prompt=True).to(self.device)
+        inputs = self.tokenizer(
+            message, return_tensors="pt", add_generation_prompt=False
+        ).to(self.device)
         return inputs
 
     def generate_output(self, encoded):
         generation_output = self.model.generate(**encoded, **self.generation_params)
         return generation_output
 
-    def decode_output(self, generation_output):
-        token_output = generation_output[0]
-        text_output = self.tokenizer.decode(token_output, skip_special_tokens=True)
-        return text_output
+    # def decode_output(self, inputs, output):
+    #     return self.tokenizer.decode(output[0, len(inputs):])
+    #     # text_output = self.tokenizer.decode(token_output, skip_special_tokens=True)
+    #     # return text_output
 
-    def separate_prompt_and_answer(self, inputs, output):
+    def retrieve_answer(self, inputs, outputs):
 
-        prompt_length = inputs['input_ids'].shape[1]
-        prompt_context = self.tokenizer.decode(output[0][0:prompt_length])
-        answer = self.tokenizer.decode(output[0][prompt_length:])
-        return prompt_context, answer
+        prompt_length = inputs.shape[1]
+
+        return self.tokenizer.decode(
+            outputs[0][prompt_length:], skip_special_tokens=True
+        )
 
     def passing_article_to_llm(self, text, prompt_instruction=None):
         prompt_instruction = self._check_prompt_instruction(prompt_instruction)
         prompt_message = self.construct_prompt(prompt_instruction, text)
 
         inputs = self.encode_input(prompt_message)
-
         output = self.generate_output(inputs)
-        prompt_context, answer = self.separate_prompt_and_answer(inputs, output)
-
-        return prompt_context, answer
-        
+        return self.retrieve_answer(inputs, output)
 
 
 class LLMHandlerInstruct(LLMHandler):
@@ -138,49 +147,102 @@ class LLMHandlerInstruct(LLMHandler):
     def encode_input(self, message):
         messages = [{"role": "user", "content": message}]
         inputs = self.tokenizer.apply_chat_template(
-            messages, return_tensors="pt"
+            messages,
+            return_tensors="pt",
+            add_generation_prompt=True,
+            add_special_tokens=True,
         ).to(self.device)
         return inputs
 
-    def separate_prompt_and_answer(self, inputs, output):
-        answer = tokenizer.decode(outputs[0][inputs['input_ids'].size(1):], skip_special_tokens=True) 
-        # answer = self.tokenizer.decode(output[0])
-        return None, answer
+
+class LLMHandlerInstructJsonformer(LLMHandlerInstruct):
+
+  def __init__(self,
+               json_schema=None,
+               *args,
+               **kwargs):
+    super().__init__(*args, **kwargs)
+    self.json_schema = f"{json_schema}"
+    self.model = self._load_model(model_path, adapter_path=None)
+
+
+    def _load_model(self, model_path, adapter_path):
+
+        self.model = outlines.models.transformer(model_path) 
+
+
+    def encode_input():
+        generator = o
+
+
+
 
 
 def main():
 
-    # Define model_path, generation_params, and prompt_instruction
-    model = "./llm_models/mistral_7b_v01"
+    # Load the config path
+    config_path = os.path.join(os.path.dirname(__file__), "../config", "config.yaml")
+    config_all = yaml.safe_load(open(config_path))
 
-    generation_params = {
-        # "context_size": 2048,
-        "temperature": 0.1,
-        "do_sample": True,
-        "top_p": 0.95,
-        "top_k": 40,
-        "max_new_tokens": 50,
-        "repetition_penalty": 1.1,
-    }
+    logger.info("Load the data for evaluation")
+    # Load the data from the model prediction
+    training_set_path = config_all["llm_params"]["training_set_path"]
+    data_loaded = datasets.load_from_disk(training_set_path)
+    logger.info("Data loadaed")
 
-    prompt_instruction = "Your prompt instruction here"
+    # LLM setting
+    model_outdir = config_all["llm_params"]["model_outdir"]
+    model_name = config_all["llm_params"]["model_name"]
+    model_path = f"{model_outdir}/{model_name}"
+    instruct_model = config_all["llm_params"]["instruct_model"]
+    # Get the adapter
+    try:
+        adapter_name = config_all["llm_params"]["adapter"]
+        adapter_path = f"{model_outdir}/{adapter_name}"
+    except KeyError:
+        adapter_path = None
+    generation_params = config_all["llm_params"]["generation_params"]
+    # Load bitsandBytes config
+    try:
+        bits_and_bytes_config = config_all["llm_params"]["bits_and_bytes_config"]
+    except KeyError:
+        bits_and_bytes_config = None
 
-    llm_handler = LLMHandler(
-        model,
-        generation_params,
-        prompt_instruction=prompt_instruction,
-    )
-    methods = "Your method section text here"  # Define your method section text
+    # Instantiate the model
+    logger.info("Load the model in the GPU(s)")
+    if instruct_model:
+        llm_model = LLMHandlerInstruct(
+            model_path,
+            generation_params,
+            bits_and_bytes_config=bits_and_bytes_config,
+            adapter_path=adapter_path,
+        )
+    else:
+        llm_model = LLMHandler(
+            model_path,
+            generation_params,
+            bits_and_bytes_config=bits_and_bytes_config,
+            adapter_path=adapter_path,
+        )
+    logger.info("Model loaded")
+    methods = [
+        "There is 4 women and 3 men for a total of 7 subjects",
+        "Only 1 woman agreed",
+        "Among the 12 mice, only 4 were alive at the end of the experiment",
+    ]  # Define your method section text
     # text_output, prompt_text, answer = llm_handler.passing_article_to_llm(methods)
-    text_output = llm_handler.passing_article_to_llm(methods)
-    # print("PROMPT CONTEXT:\n")
-    # print(prompt_text)
-    # print("\n")
-    # print("GENERATED ANSWER:\n")
-    # print(answer)
-    # print("\n")
-    print("TEXT OUTPUT:\n")
-    print(text_output)
+    for example in methods:
+        text_output = llm_model.passing_article_to_llm(
+            example, prompt_instruction=prompt_instruction_3
+        )
+        # print("PROMPT CONTEXT:\n")
+        # print(prompt_text)
+        # print("\n")
+        # print("GENERATED ANSWER:\n")
+        # print(answer)
+        # print("\n")
+        print("TEXT OUTPUT:\n")
+        print(text_output)
 
 
 if __name__ == "__main__":

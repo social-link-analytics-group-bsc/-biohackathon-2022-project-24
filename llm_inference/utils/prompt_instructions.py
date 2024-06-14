@@ -1,7 +1,7 @@
 import json
 
 
-json_response = {
+json_response_format = {
     "answer": "str",
     "labels": {
         "sample": {
@@ -22,7 +22,7 @@ json_response = {
     },
 }
 
-json_string = json.dumps(json_response, indent=4)
+json_string = json.dumps(json_response_format, indent=4)
 
 prompt_instruction_1 = f"""Find the total of men and women in that study. 
 Your response should be in JSON only. If you need to output information about your process do it under the key: model_inference_info and don't output a Note at the end. 
