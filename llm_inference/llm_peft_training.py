@@ -143,7 +143,7 @@ def main():
     print_cuda.print_state()
 
     # Instantiate the trainer
-    config_trainers_params = config_all["llm_params"]["trainer_params"]
+    config_trainers_params = config_all["llm_params"]['peft']["trainer_params"]
     training_args = TrainingArguments(
         output_dir=adapter_path,
         **config_trainers_params,
