@@ -32,10 +32,10 @@ def _extract_labels(example):
                 # FIXME As soon as it is fixed in prodigy, can remove the if
                 if label == "n_fem":
                     label = "n_female"
-                if label == 'p_fem':
+                if label == "p_fem":
                     label = "p_female"
-                if label == 'perc_fem':
-                    label = 'perc_female'
+                if label == "perc_fem":
+                    label = "perc_female"
                 # if label not in token_to_label.keys():
                 #     print(label)
                 #     raise
@@ -50,15 +50,34 @@ def _extract_labels(example):
                     # FIXME As soon as it is fixed in prodigy, can remove the if
                     if label == "n_fem":
                         label = "n_female"
-                    if label == 'p_fem':
+                    if label == "p_fem":
                         label = "p_female"
-                    if label == 'perc_fem':
-                        label = 'perc_female'
+                    if label == "perc_fem":
+                        label = "perc_female"
                     value = example["tokens"][span["token_start"]]["id"]
                     token_to_label.setdefault(label, []).append(value)
     except KeyError:  # if there are no spans
         token_to_label = {}
     example["labels"] = token_to_label
+    return example
+
+
+def _format_labels(example):
+    labels = example["labels"].copy()
+    print(f"\nLABELS:\n{example['labels']}")
+    example["labels"] = dict()
+    example["labels"]["sample"] = dict()
+    example["labels"]["sample"]["total"] = labels["sample"]
+    example["labels"]["sample"]["sample"] = labels["sample_p"]
+
+    example["labels"]["male"] = dict()
+    example["labels"]["male"]["total"] = labels["n_male"]
+    example["labels"]["male"]["sample"] = labels["n_male_p"]
+
+    example["labels"]["female"] = dict()
+    example["labels"]["female"]["total"] = labels["n_female"]
+    example["labels"]["female"]["sample"] = labels["n_female_p"]
+    print(f"REFORMATED LABELS:\n{example['labels']}")
     return example
 
 
@@ -155,6 +174,7 @@ def main():
 
     dataset = load_dataset("json", data_files=args.data, split="train")
     dataset = dataset.map(_extract_labels)
+    dataset = dataset.map(_format_labels)
     # Not using the reason (transforming short answer to long description)
     # dataset = dataset.map(_create_description)
     dataset = dataset.map(_transform_key_meta)
@@ -165,8 +185,8 @@ def main():
     dataset = dataset.map(_create_chat_data)
     dataset = cast_label(dataset)
     dataset = _drop_unused_data(dataset)
-    for i, k in enumerate(dataset[0:2]):
-        print(k, dataset[i][k])
+    # for i, k in enumerate(dataset[0:2]):
+    #     print(k, dataset[i][k])
     print_simple_info(dataset)
 
     # Save the dataset as an arrow file

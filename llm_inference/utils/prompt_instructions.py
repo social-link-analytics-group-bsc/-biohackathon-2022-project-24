@@ -9,18 +9,33 @@ json_response_format = {
             "sample": "[int]",
             "sentence_where_found": "[str]",
         },
-        "men": {
+        "male": {
             "total": "int",
             "sample": "[int]",
             "sentence_where_found": "[str]",
         },
-        "women": {
+        "female": {
             "total": "int",
             "sample": "[int]",
             "sentence_where_found": "[str]",
         },
     },
 }
+
+# json_response_format = {
+#     "answer": "str",
+#     "labels": {
+#         "n_female": "int",
+#         "n_female_p": "[int]",
+#         "n_male": "int",
+#         "n_male_p": "[int]",
+#         "perc_female": "int",
+#         "perc_male": "int",
+#         "perc_female_p": "[int]",
+#         "perc_male_p": "[int]",
+#     },
+# }
+
 
 json_string = json.dumps(json_response_format, indent=4)
 
@@ -55,35 +70,23 @@ data_source": "Text extracted from research article",
 
 To take a decision follow these instructions: 
 
-We are only interested in the number of human subjects: E.g.:  individuals, participants, males, females, lung from 40 patients, 
-We exclude: Cells, strains or cells lines. E.g. 30 cells, what about human parts (e.g. human molars)? Animals different from human. E.g. 40 mice, 
-Bear in mind that one subject may have multiple samples. We want the number of individuals not the number of samples. E.g. 20 samples from 10 patients. (N=10).
-Use partial numbers when you are sure that they can be added. E.g. When no total numbers appear then should they all be considered as partial…?
-
-
+Only interested in the number of human subjects: E.g.:  individuals, participants, males, females, lung from 40 patients, Human subjects (single and plural)
+We exclude: Cells, strains or cells lines. E.g. 30 cells, what about human parts. Animals different from human. E.g. 40 mice, 
+One subject may have multiple samples. We want the number of individuals not the number of samples. E.g. 20 samples from 10 patients. (N=10).
+Use partial numbers when you are sure that they can be added.
 Filtering samples. Options:
-We will take the largest number of samples because:
-These are the samples considered for the analysis
+We will take the largest number of samples.
 There can be multiple filtering steps, different subsets of samples used for different experiments,..
-There will be cases in which the number of males and females is specified before and/or after filtering steps. What should we do here?
-When the sex of the samples is not explicitly there but it is clear from the context, annotate the samples as N_males / N_females instead of N_samples. Can a number correspond to two labels? E.g. Study about pregnancy: 10 subjects… (N_females = 10 & N=10) → Accept
+When the sex of the samples is not explicitly there but it is clear from the context, annotate the samples as N_males / N_females instead of N_samples. A number correspond to two labels? E.g. Study about pregnancy: 10 subjects… (N_females = 10 & N=10) → Accept
 
 After annotating, select:
 Accept: All information is clear and about human subject 
 Reject: There are label(s) but at least one is confusing.
 There is at least 1 label that you are doubting if or how to annotate based on the provided rules.
-Ignore: There are no labels of interest. 
-There are no labels of interest. For instance, the paper is about animals (not human), cell lines, strains, etc. In other words, there are no numbers or percentages of human subjects, males or females. 
-→ Ignore with your best shot.
+Ignore: There are no labels of interest. For instance, the paper is about animals (not human), cell lines, strains, etc. In other words, there are no numbers or percentages of human subjects, males or females. 
 
-Human subjects (single and plural):
-Individuals
-Human
-Male / Female / 
-Participants
-
-The answer should be in json format:\n{json_string}. 
 Only answer the json no added text.
 If there is no text, do not invent response. Only output the json with Ignore and all the fields to None
+The answer should be in json format:\n{json_string}
 The text you need to extract the information from:
 """
