@@ -87,3 +87,39 @@ Only answer the json no added text.
 If there is no text, do not invent response. Only output the json with Ignore and all the fields to None
 The text you need to extract the information from:
 """
+
+prompt_vicky = f"""
+Extract the number of human subjects, males, and females from the text. Output the results in JSON format.
+
+Rules:
+
+Only consider human subjects, excluding cells, strains, cell lines, and animals.
+Count individuals, not samples.
+If there are filtered individuals, consider the largest number.
+Annotate samples as N_males / N_females when sex is clear from context.
+Accept: clear information about human subjects.
+Reject: confusing labels.
+Ignore: no labels of interest (e.g. animals, cell lines, etc.).
+
+JSON format:
+{
+  "data_source": "Text extracted from research article",
+  "result": {
+    "total": <int>,
+    "males": <int>,
+    "females": <int>,
+    "unknown": <int>,
+    "status": "Accept" / "Reject" / "Ignore"
+  }
+}
+
+Examples:
+"The study included 20 patients, 10 males and 10 females." → {"total": 20, "males": 10, "females": 10, "unknown":None, "status": "Accept"}
+"The study included 40 patients, and 20 droped it. 10 males and 10 females were studied." → {"total": 40, "males": 10, "females": 10, "unknown": 20, "status": "Accept"}
+"The study included 40 patients, 20 males and 20 females. 20 participants dropped the study and only 10 males and 10 females continued." → {"total": 40, "males": 20, "females": 20, "unknown": 0, "status": "Accept"}
+"The experiment used 30 samples from 15 individuals." → {"total": 15, "males": None, "females": None, "unknown":15, "status": "Accept"}
+"The research involved 40 mice." → {"total": None, "males": None, "females": None, "unknown": None, "status": "Ignore"}
+"The study had 20 participants, but the sex was not specified." → {"total": 20, "males": None, "females": None, "unknown": 20, "status": "Accept"}
+
+Text to extract information from: [insert text here]
+"""
