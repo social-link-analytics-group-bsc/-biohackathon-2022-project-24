@@ -86,7 +86,7 @@ There is at least 1 label that you are doubting if or how to annotate based on t
 Ignore: There are no labels of interest. For instance, the paper is about animals (not human), cell lines, strains, etc. In other words, there are no numbers or percentages of human subjects, males or females. 
 
 Only answer the json no added text.
-If there is no text, do not invent response. Only output the json with Ignore and all the fields to None
+If there is no text, do not invent response. Only output the json with Ignore
 The answer should be in json format:\n{json_string}
 The text you need to extract the information from:
 """

@@ -62,6 +62,15 @@ def _extract_labels(example):
     return example
 
 
+def remove_none_values(d):
+    """
+    Remove all the None answer to avoid inflating the comparison when it does not provide any values
+    """
+    if not isinstance(d, dict):
+        return d
+    return {k: remove_none_values(v) for k, v in d.items() if v is not None}
+
+
 def _format_labels(example):
     labels = example["labels"].copy()
     print(f"\nLABELS:\n{example['labels']}")
@@ -77,6 +86,8 @@ def _format_labels(example):
     example["labels"]["female"] = dict()
     example["labels"]["female"]["total"] = labels["n_female"]
     example["labels"]["female"]["sample"] = labels["n_female_p"]
+    # Remove none value keys
+    example["labels"] = remove_none_values(example["labels"])
     print(f"REFORMATED LABELS:\n{example['labels']}")
     return example
 

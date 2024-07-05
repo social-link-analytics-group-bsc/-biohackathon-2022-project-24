@@ -10,17 +10,6 @@ logger = logging.getLogger(
 logging.basicConfig(level=logging.INFO)
 
 
-def get_arguments(parser):
-    parser.add_argument(
-        "--model",
-        default=None,
-        type=str,
-        required=False,
-        help="Give the config filename to the model to be run. ",
-    )
-    return parser
-
-
 def load_config(config_path):
     with open(config_path, "r") as file:
         return yaml.safe_load(file)
@@ -32,9 +21,7 @@ def setup_model_path(config_all, config_model):
     return os.path.join(model_outdir, model_name)
 
 
-def setup_adapter_path(model_path, config_dict):
-    adapter = config_dict["inference"]["adapter"]
-    adapter_quantization = config_dict["peft"]["quantization"]
+def setup_adapter_path(model_path, adapter_quantization, adapter=False):
     if adapter:
         if adapter_quantization:
             adapter_path = f"{model_path}_lora_{adapter_quantization}"
@@ -46,15 +33,6 @@ def setup_adapter_path(model_path, config_dict):
         adapter_path = None
         adapter_id = ""
     return adapter_path, adapter_id
-
-
-def setup_bits_and_bytes_config(quantization, config):
-    bits_and_bytes_config = None
-    if quantization:
-        bits_and_bytes_config = config.get("bits_and_bytes_config", {}).get(
-            "model_quantization", None
-        )
-    return quantization, bits_and_bytes_config
 
 
 def print_cuda_state():

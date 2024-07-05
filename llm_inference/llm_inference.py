@@ -40,6 +40,8 @@ class LLMHandler:
     def _generate_bits_and_bytes(self, quantization_config):
 
         if quantization_config:
+
+            raise ("Need to fix that to include the version of 8bits")
             quantization_config["bnb_4bit_compute_dtype"] = torch.float16
             self.quantization = BitsAndBytesConfig(**quantization_config)
         else:
@@ -157,25 +159,17 @@ class LLMHandlerInstruct(LLMHandler):
 
 class LLMHandlerInstructJsonformer(LLMHandlerInstruct):
 
-  def __init__(self,
-               json_schema=None,
-               *args,
-               **kwargs):
-    super().__init__(*args, **kwargs)
-    self.json_schema = f"{json_schema}"
-    self.model = self._load_model(model_path, adapter_path=None)
+    def __init__(self, json_schema=None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.json_schema = f"{json_schema}"
+        self.model = self._load_model(model_path, adapter_path=None)
 
+        def _load_model(self, model_path, adapter_path):
 
-    def _load_model(self, model_path, adapter_path):
+            self.model = outlines.models.transformer(model_path)
 
-        self.model = outlines.models.transformer(model_path) 
-
-
-    def encode_input():
-        generator = o
-
-
-
+        def encode_input():
+            generator = o
 
 
 def main():

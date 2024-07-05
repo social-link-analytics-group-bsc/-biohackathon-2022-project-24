@@ -3,45 +3,6 @@ inference:
   adapter: False
   quantization: False
   instruct_model: True
-  generation_params:
-    # context_size: 2048
-    # n_threads: 10
-    # n_gpu_layers: 8
-    temperature: 0.1
-    do_sample: True
-    top_p: 0.95
-    top_k: 40
-    max_new_tokens: 512
-    repetition_penalty: 1.0
 peft:
   instruct_model: True
   quantization: 4bits
-  lora_config: 
-    r: 16
-    target_modules: ["q_proj", "q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj", "lm_head"]
-    task_type: CAUSAL_LM
-    lora_alpha: 32
-    lora_dropout: 0.05
-  trainer_params:
-    bf16: True
-    gradient_checkpointing: True
-    learning_rate: 2.0e-5  # Get the .0 or the number is parsed as string
-    per_device_train_batch_size: 1
-    per_device_eval_batch_size: 1
-    num_train_epochs: 3
-    weight_decay: 0.01
-    evaluation_strategy: epoch
-    save_strategy: epoch
-    # load_best_model_at_the_end: True
-    push_to_hub: False
-    # deepspeed: ./config/deepspeed.json
-bits_and_bytes:
-  4bits:
-    load_in_4bit: True
-    bnb_4bit_quant_type: nf4
-    bnb_4bit_use_double_quant: True
-    # FIXME Not loaded (no torch no attribute, don't know why)
-    # So I directly hardcode it into the llm_inference and llm_peft_training_code
-    bnb_4bit_compute_dtype: torch.bfloat16
-  8bits:
-    load_in_8bits: True
