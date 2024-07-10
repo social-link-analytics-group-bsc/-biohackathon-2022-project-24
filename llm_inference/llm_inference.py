@@ -28,8 +28,11 @@ class LLMHandler:
         prompt_instruction=None,
         bits_and_bytes_config=None,
         adapter_path=None,
+        torchtype=torch.bfloat16,
     ):
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        # self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = "auto"
+        self.torchtype = torchtype
         self._print_state()
         self.prompt_instruction = prompt_instruction
         self.generation_params = generation_params
@@ -41,19 +44,24 @@ class LLMHandler:
 
         if quantization_config:
 
-            raise ("Need to fix that to include the version of 8bits")
-            quantization_config["bnb_4bit_compute_dtype"] = torch.float16
+            # raise Exception("Need to fix that to include the version of 8bits")
+            quantization_config["bnb_4bit_compute_dtype"] = torch.bfloat16
             self.quantization = BitsAndBytesConfig(**quantization_config)
         else:
             self.quantization = None
 
     def _load_model(self, model_path, adapter_path):
-
+        logger.info(
+            f"Load: {model_path} - adapter_path: {adapter_path} - quantisation: {self.quantization}"
+        )
         # Load the Lora model
+
         if adapter_path:
             config = PeftConfig.from_pretrained(adapter_path)
             self.model = AutoModelForCausalLM.from_pretrained(
                 config.base_model_name_or_path,
+                torch_dtype=self.torchtype,
+                attn_implementation="sdpa",  # use sdpa, alternatively use "flash_attention_2"
                 quantization_config=self.quantization,
                 device_map=self.device,
             )
@@ -67,7 +75,9 @@ class LLMHandler:
         else:
             self.model = AutoModelForCausalLM.from_pretrained(
                 model_path,
-                low_cpu_mem_usage=True,
+                attn_implementation="sdpa",  # use sdpa, alternatively use "flash_attention_2"
+                torch_dtype=self.torchtype,
+                # low_cpu_mem_usage=True,
                 device_map=self.device,
                 quantization_config=self.quantization,
             )
@@ -83,13 +93,22 @@ class LLMHandler:
         print()
 
         # Additional Info when using cuda
-        if self.device.type == "cuda":
-            print(torch.cuda.get_device_name(0))
-            print("Memory Usage:")
-            print(
-                "Allocated:", round(torch.cuda.memory_allocated(0) / 1024**3, 1), "GB"
-            )
-            print("Cached:   ", round(torch.cuda.memory_reserved(0) / 1024**3, 1), "GB")
+        try:
+            if self.device.type == "cuda":
+                print(torch.cuda.get_device_name(0))
+                print("Memory Usage:")
+                print(
+                    "Allocated:",
+                    round(torch.cuda.memory_allocated(0) / 1024**3, 1),
+                    "GB",
+                )
+                print(
+                    "Cached:   ",
+                    round(torch.cuda.memory_reserved(0) / 1024**3, 1),
+                    "GB",
+                )
+        except AttributeError:  # In case of auton
+            pass
 
     def _check_prompt_instruction(self, prompt_instruction):
         if self.prompt_instruction is None:
@@ -111,7 +130,7 @@ class LLMHandler:
     def encode_input(self, message):
         inputs = self.tokenizer(
             message, return_tensors="pt", add_generation_prompt=False
-        ).to(self.device)
+        )  # .to(self.device)
         return inputs
 
     def generate_output(self, encoded):
@@ -153,7 +172,8 @@ class LLMHandlerInstruct(LLMHandler):
             return_tensors="pt",
             add_generation_prompt=True,
             add_special_tokens=True,
-        ).to(self.device)
+        )
+        # .to(self.device)
         return inputs
 
 

@@ -3,7 +3,7 @@ model_id: "llm_models/meta_llama3_70b_instruct/" # Hugging Face model id
 dataset_path: "./data/training_data/final_dataset.hf"                      # path to dataset
 max_seq_len:  8000 # 2048              # max sequence length for model and packing of the dataset
 # training parameters
-output_dir: "./llm_models/llama-3-70b_qlora_4bits" # Temporary output directory for model checkpoints
+output_dir: "./llm_models/llama3_70b_lora_4bits" # Temporary output directory for model checkpoints
 report_to: "tensorboard"               # report metrics to tensorboard
 learning_rate: 0.0002                  # learning rate 2e-4
 lr_scheduler_type: "constant"          # learning rate scheduler

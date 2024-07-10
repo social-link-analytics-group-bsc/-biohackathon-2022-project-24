@@ -11,7 +11,7 @@ from datasets import DatasetDict
 from llm_inference import LLMHandler, LLMHandlerInstruct
 from utils.prompt_instructions import prompt_instruction_3 as prompt_instruction
 from utils.utils import (
-    get_arguments,
+    # get_arguments,
     load_config,
     setup_model_path,
     setup_adapter_path,
@@ -24,6 +24,40 @@ logger = logging.getLogger(
     __name__
 )  ## Supposed to be a global logger to work in concurrent.futures
 logging.basicConfig(level=logging.INFO)
+
+
+def parser():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--model",
+        default=None,
+        type=str,
+        required=True,
+        help="Give the config filename to the model to be run. ",
+    )
+    parser.add_argument(
+        "--quantization",
+        default=None,
+        type=str,
+        required=False,
+        help="Decide the level of quantization for the model",
+    )
+    parser.add_argument(
+        "--adapter",
+        default=False,
+        type=bool,
+        required=False,
+        help="To know if load a adapter or not",
+    )
+
+    parser.add_argument(
+        "--adapter_quantization",
+        default=False,
+        type=str,
+        required=False,
+        help="To know if adapter is quantized or not",
+    )
+    return parser
 
 
 def format_answer(answer):
@@ -68,32 +102,29 @@ def return_eval_score(evaluator, ref_json, pred_json):
 
 def main():
 
-    parser = argparse.ArgumentParser()
-    parser = get_arguments(parser)
-    args = parser.parse_args()
-    logger.info(f"Using model: {args.model}")
+    args = parser().parse_args()
+    print(args)
 
     config_path = os.path.join(os.path.dirname(__file__), "../config", "config.yaml")
     config_all = load_config(config_path)
 
-    config_model_path = os.path.join(
-        os.path.dirname(__file__), "../config", f"{args.model}.yaml"
-    )
-    config_model = load_config(config_model_path)
+    config_model = load_config(args.model)
+    logger.info(f"Using model: {config_model['model']}")
 
     model_path = setup_model_path(config_all, config_model)
-    adapter_path, adapter_id = setup_adapter_path(model_path, config_model)
 
-    model_quantization = config_model["inference"]["quantization"]
-    model_quantization, bitsandbytes = setup_bits_and_bytes_config(
-        model_quantization, config_model["bits_and_bytes"]
+    adapter_path = setup_adapter_path(
+        model_path, args.adapter, args.adapter_quantization
     )
-    generation_params = config_model["inference"]["generation_params"]
-
-    model_id = f"{model_path}_{model_quantization}{adapter_id}"
+    model_quantization, bitsandbytes = setup_bits_and_bytes_config(
+        args.quantization, config_all["llm_params"]["bits_and_bytes"]
+    )
+    logger.info(f"BitsAndBytes Config:\n\t{bitsandbytes}")
+    generation_params = config_all["llm_params"]["generation_params"]
+    logger.info(f"Generation params:\n\t{generation_params}")
 
     logger.info("Load the model in the GPU(s)")
-    if config_model["inference"]["instruct_model"]:
+    if config_model["instruct"] is True:
         llm_model = LLMHandlerInstruct(
             model_path,
             generation_params,
@@ -157,18 +188,19 @@ def main():
         )
 
         ref_json = format_answer(answer_training)
-        print(f"Ref json: {ref_json} - Type: {type(ref_json)}")
+        # print(f"Ref json: {ref_json} - Type: {type(ref_json)}")
 
         pred_json = format_answer(answer)
-        print(f"pred json: {pred_json} - Type: {type(pred_json)}")
+        # print(f"pred json: {pred_json} - Type: {type(pred_json)}")
 
         cleaned_pred_json = clean_keys(reference=ref_json, answer=pred_json)
 
         cleaned_pred_json = remove_none_values(cleaned_pred_json)
         cleaned_ref_json = remove_none_values(ref_json)
 
-        print(f"cleaned pred json: {cleaned_pred_json}")
-        print(f"cleaned ref json: {cleaned_ref_json}")
+        if answer_type == 0:
+            print(f"cleaned pred json: {cleaned_pred_json}")
+            print(f"cleaned ref json: {cleaned_ref_json}")
 
         score = return_eval_score(evaluator, cleaned_ref_json, cleaned_pred_json)
         scores_by_answer_type.setdefault(answer_type, []).append(score)
@@ -197,10 +229,10 @@ def main():
 
     results = {
         "date": datetime.datetime.now().strftime("%d/%m/%Y %H:%M"),
-        "model_name": config_model["inference"]["model_name"],
+        "model_name": config_model["model"],
         "model_quantization": model_quantization,
-        "adapteur": config_model["inference"]["adapter"],
-        "adapteur_quantization": config_model["peft"]["quantization"],
+        "adapter": args.adapter,
+        "adapter_quantization": args.adapter_quantization,
         "score_agg": overall_average_score,
         "score_0": average_score_by_answer_type.get(0, 0),
         "score_1": average_score_by_answer_type.get(1, 0),
@@ -210,6 +242,7 @@ def main():
 
     with open(eval_result_path, "a") as result_file:
         json.dump(results, result_file, indent=2)
+        result_file.write(",\n")
 
 
 if __name__ == "__main__":

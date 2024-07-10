@@ -55,7 +55,6 @@ llm_params:
     top_k: 40
     max_new_tokens: 512
     repetition_penalty: 1.0
-
   lora_config: 
     r: 16
     target_modules: ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj", "lm_head"]
@@ -86,4 +85,3 @@ llm_params:
       bnb_4bit_compute_dtype: torch.bfloat16
     8bits:
       load_in_8bit: True
-      bnb_8bit_compute_dtype: torch.bfloat16
