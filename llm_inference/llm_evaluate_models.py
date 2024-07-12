@@ -8,10 +8,10 @@ import datetime
 from langchain.evaluation import JsonEditDistanceEvaluator
 import datasets
 from datasets import DatasetDict
-from llm_inference import LLMHandler, LLMHandlerInstruct
+from utils.inference_class import LLMHandler, LLMHandlerInstruct
 from utils.prompt_instructions import prompt_instruction_3 as prompt_instruction
 from utils.utils import (
-    # get_arguments,
+    dynamic_import,
     load_config,
     setup_model_path,
     setup_adapter_path,
@@ -33,7 +33,7 @@ def parser():
         default=None,
         type=str,
         required=True,
-        help="Give the config filename to the model to be run. ",
+        help="Path of the model or name of the model in case it can be downloaded",
     )
     parser.add_argument(
         "--quantization",
@@ -42,6 +42,14 @@ def parser():
         required=False,
         help="Decide the level of quantization for the model",
     )
+    parser.add_argument(
+        "--instruct",
+        default=True,
+        type=bool,
+        required=True,
+        help="If the model is an instruct model or not",
+    )
+
     parser.add_argument(
         "--adapter",
         default=False,
@@ -57,6 +65,23 @@ def parser():
         required=False,
         help="To know if adapter is quantized or not",
     )
+
+    parser.add_argument(
+        "--prompt",
+        default=None,
+        type=str,
+        required=True,
+        help="path to the prompt_file",
+    )
+
+    parser.add_argument(
+        "--full_set",
+        default=False,
+        type=bool,
+        required=False,
+        help="To run the evaluation on the entire dataset instead of splitting it",
+    )
+
     return parser
 
 
@@ -109,13 +134,17 @@ def main():
     config_all = load_config(config_path)
 
     config_model = load_config(args.model)
-    logger.info(f"Using model: {config_model['model']}")
+    logger.info(f"Using model: {args.model}")
 
-    model_path = setup_model_path(config_all, config_model)
+    model_path = setup_model_path(config_all, args.model)
 
     adapter_path = setup_adapter_path(
         model_path, args.adapter, args.adapter_quantization
     )
+    prompt = args.prompt
+    full_eval = args.full_eval
+
+    prompt_instruction = dynamic_import(f"utils.{prompt}", "prompt_instruction")
     model_quantization, bitsandbytes = setup_bits_and_bytes_config(
         args.quantization, config_all["llm_params"]["bits_and_bytes"]
     )
@@ -124,7 +153,7 @@ def main():
     logger.info(f"Generation params:\n\t{generation_params}")
 
     logger.info("Load the model in the GPU(s)")
-    if config_model["instruct"] is True:
+    if args.instruct is True:
         llm_model = LLMHandlerInstruct(
             model_path,
             generation_params,
@@ -144,28 +173,33 @@ def main():
     logger.info("Load the data for evaluation")
     # Load the data from the model prediction
     eval_result_path = config_all["llm_params"]["eval_result_path"]
-    training_set_path = config_all["llm_params"]["training_set_path"]
+    training_set_outdir = config_all["llm_params"]["training_set_path"]
+
+    training_set_path = f"{training_set_outdir}_{prompt}.hf"
 
     # FIXME Need to move that into the prep dataset to ensure reproductiblity (but the seed should be enough)
     ds_training_set = datasets.load_from_disk(training_set_path)
-    # Split a first time to gain the train set and the test set
-    ds_training_set = ds_training_set.train_test_split(
-        test_size=0.2, seed=42, stratify_by_column="answer"
-    )
-    # Split the test set a second time to get the validation set and the test set
-    ds_devtest = ds_training_set["test"].train_test_split(
-        test_size=0.5, seed=42, stratify_by_column="answer"
-    )
-    # Create a new DatasetDict to get all of them in one place
-    training_set = DatasetDict(
-        {
-            "training": ds_training_set["train"],
-            "validation": ds_devtest["train"],
-            "test": ds_devtest["test"],
-        }
-    )
+    if full_eval is True:
+        data_loaded = ds_training_set
+    else:
+        # Split a first time to gain the train set and the test set
+        ds_training_set = ds_training_set.train_test_split(
+            test_size=0.2, seed=42, stratify_by_column="answer"
+        )
+        # Split the test set a second time to get the validation set and the test set
+        ds_devtest = ds_training_set["test"].train_test_split(
+            test_size=0.5, seed=42, stratify_by_column="answer"
+        )
+        # Create a new DatasetDict to get all of them in one place
+        training_set = DatasetDict(
+            {
+                "training": ds_training_set["train"],
+                "validation": ds_devtest["train"],
+                "test": ds_devtest["test"],
+            }
+        )
 
-    data_loaded = training_set["test"]
+        data_loaded = training_set["test"]
     logger.info(f"Data loadaed:\n{data_loaded}")
 
     # Instanciate the evaluation. Using Distance to provide a score of distance

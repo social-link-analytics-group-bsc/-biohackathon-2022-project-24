@@ -7,7 +7,6 @@ import logging
 import logging
 import torch
 import datasets
-from prob_jsonformer import Jsonformer
 from peft import PeftConfig
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 
@@ -175,21 +174,6 @@ class LLMHandlerInstruct(LLMHandler):
         )
         # .to(self.device)
         return inputs
-
-
-class LLMHandlerInstructJsonformer(LLMHandlerInstruct):
-
-    def __init__(self, json_schema=None, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.json_schema = f"{json_schema}"
-        self.model = self._load_model(model_path, adapter_path=None)
-
-        def _load_model(self, model_path, adapter_path):
-
-            self.model = outlines.models.transformer(model_path)
-
-        def encode_input():
-            generator = o
 
 
 def main():

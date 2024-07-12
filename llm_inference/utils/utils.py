@@ -2,6 +2,7 @@ import os
 import logging
 import torch
 import yaml
+import importlib
 from accelerate import PartialState
 
 logger = logging.getLogger(
@@ -13,6 +14,29 @@ logging.basicConfig(level=logging.INFO)
 def load_config(config_path):
     with open(config_path, "r") as file:
         return yaml.safe_load(file)
+
+
+def dynamic_import(module_name: str, variable_name: str):
+    """
+    Dynamically imports a variable from a given module.
+
+    Args:
+        module_name (str): The full name of the module to import, e.g., 'utils.prompt1'.
+        variable_name (str): The name of the variable to import from the module.
+
+    Returns:
+        Any: The imported variable if successful, or None if the import fails.
+
+    Raises:
+        ImportError: If the module cannot be imported.
+        AttributeError: If the variable does not exist in the module.
+    """
+    try:
+        module = importlib.import_module(module_name)
+        variable = getattr(module, variable_name)
+        return variable
+    except (ImportError, AttributeError) as e:
+        raise Exception(f"Error: {e}")
 
 
 def setup_model_path(config_all, config_model):

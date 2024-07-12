@@ -44,7 +44,7 @@ db_params:
 llm_params:
   eval_result_path: ./data/results/evaluation_models.json
   model_outdir: ./llm_models/
-  training_set_path: ./data/training_data/final_dataset.hf
+  training_set_outdir: ./data/training_data/
   generation_params:
     # context_size: 2048
     # n_threads: 10

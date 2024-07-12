@@ -1,8 +1,0 @@
-inference:
-  model_name: "mixtral_8x22b_instruct_v01"
-  adapter: True
-  quantization: False
-  instruct_model: True
-peft:
-  instruct_model: True
-  quantization: 4bits

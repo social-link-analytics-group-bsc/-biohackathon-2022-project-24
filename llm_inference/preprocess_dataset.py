@@ -7,7 +7,7 @@ import collections
 import argparse
 from datasets import load_dataset, Dataset, ClassLabel
 
-from utils.prompt_instructions import prompt_instruction_3
+from utils.utils import dynamic_import
 
 
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
@@ -19,6 +19,12 @@ def parsing_arguments(parser):
         type=str,
         default="nothing",
         help="Prodigy data to transform into conll",
+    )
+    parser.add_argument(
+        "--prompt",
+        type=str,
+        default="nothing",
+        help="Prompt to be passed to the dataset",
     )
     return parser
 
@@ -157,7 +163,7 @@ def _drop_unused_data(dataset: Dataset) -> Dataset:
     return dataset
 
 
-def cast_label(dataset: Dataset) -> Dataset:
+def _cast_label(dataset: Dataset) -> Dataset:
     """
     Cast the column answer as ClassLabel type to
     stratify in the test/train split
@@ -165,6 +171,24 @@ def cast_label(dataset: Dataset) -> Dataset:
     new_features = dataset.features.copy()
     new_features["answer"] = ClassLabel(names=["accept", "reject", "ignore"])
     dataset = dataset.cast(new_features)
+    return dataset
+
+
+def process_dataset(dataset_path, prompt_instruction):
+
+    dataset = load_dataset("json", data_files=dataset_path, split="train")
+    dataset = dataset.map(_extract_labels)
+    dataset = dataset.map(_format_labels)
+    # Not using the reason (transforming short answer to long description)
+    # dataset = dataset.map(_create_description)
+    dataset = dataset.map(_transform_key_meta)
+    dataset = dataset.map(_create_full_json_answer)
+    dataset = dataset.map(
+        _create_prompt, fn_kwargs={"prompt_instruction": prompt_instruction}
+    )
+    dataset = dataset.map(_create_chat_data)
+    dataset = _cast_label(dataset)
+    dataset = _drop_unused_data(dataset)
     return dataset
 
 
@@ -181,25 +205,15 @@ def main():
 
     config_path = os.path.join(os.path.dirname(__file__), "../config", "config.yaml")
     config_all = yaml.safe_load(open(config_path))
-    training_set_path = config_all["llm_params"]["training_set_path"]
+    training_set_outdir = config_all["llm_params"]["training_set_outdir"]
+    dataset_path = args.data
+    prompt = args.prompt
+    prompt_instruction = dynamic_import(f"utils.{prompt}", "prompt_instruction")
+    dataset = process_dataset(dataset_path, prompt_instruction)
 
-    dataset = load_dataset("json", data_files=args.data, split="train")
-    dataset = dataset.map(_extract_labels)
-    dataset = dataset.map(_format_labels)
-    # Not using the reason (transforming short answer to long description)
-    # dataset = dataset.map(_create_description)
-    dataset = dataset.map(_transform_key_meta)
-    dataset = dataset.map(_create_full_json_answer)
-    dataset = dataset.map(
-        _create_prompt, fn_kwargs={"prompt_instruction": prompt_instruction_3}
-    )
-    dataset = dataset.map(_create_chat_data)
-    dataset = cast_label(dataset)
-    dataset = _drop_unused_data(dataset)
-    # for i, k in enumerate(dataset[0:2]):
-    #     print(k, dataset[i][k])
     print_simple_info(dataset)
 
+    training_set_path = f"{training_set_outdir}_{prompt}.hf"
     # Save the dataset as an arrow file
     dataset.save_to_disk(training_set_path)
 

@@ -22,45 +22,10 @@ json_response_format = {
     },
 }
 
-# json_response_format = {
-#     "answer": "str",
-#     "labels": {
-#         "n_female": "int",
-#         "n_female_p": "[int]",
-#         "n_male": "int",
-#         "n_male_p": "[int]",
-#         "perc_female": "int",
-#         "perc_male": "int",
-#         "perc_female_p": "[int]",
-#         "perc_male_p": "[int]",
-#     },
-# }
-
-
 json_string = json.dumps(json_response_format, indent=4)
 
-prompt_instruction_1 = f"""Find the total of men and women in that study. 
-Your response should be in JSON only. If you need to output information about your process do it under the key: model_inference_info and don't output a Note at the end. 
-If there are several sample that contains men or women, create a list of sample size for men and a list of sample size for women in addition to the total sample size per women and men and the total. 
-Women can be sometimes refered to female. Men can be sometimes refers to males. 
-In case there are percentages. output a field specifying it is percentages. 
-If there is no mention of men or women (or related terms) please state that the value are 0, don't assume the representation. 
-For the JSON verify it follow this structure: {json_string}"""
 
-prompt_instruction_2 = f"""data_source": "Text extracted from research article",
-"processing_steps": [
-"Identified key sections discussing men and women in the study",
-"Extracted relevant numerical data on men and women",
-"Validated the data against the context in the text",
-"Calculated total sample size, men and women counts",
-"Don't make assumption of the repartition if no direct mentions",
-“If the answer is clear, stated in answer: `accept`”,
-“If it is not about human subject stated in answer: `ignore`”,
-“If the information is not clear stated in answer: `reject`”,
-"Output the decision process  in json format following the format: {json_string}"""
-
-
-prompt_instruction_3 = f"""
+prompt_instruction = f"""
 data_source": "Text extracted from research article",
 "processing_steps": [
 "Identified key sections discussing men and women in the study",

@@ -1,8 +1,0 @@
-inference:
-  model_name: "mistral_7b_instruct_v03"
-  adapter: True
-  quantization: False
-  instruct_model: True
-peft:
-  instruct_model: True
-  quantization: 4bits
