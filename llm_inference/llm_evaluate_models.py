@@ -13,7 +13,6 @@ from utils.prompt_instructions import prompt_instruction_3 as prompt_instruction
 from utils.utils import (
     dynamic_import,
     load_config,
-    setup_model_path,
     setup_adapter_path,
     setup_bits_and_bytes_config,
 )
@@ -132,17 +131,15 @@ def main():
 
     config_path = os.path.join(os.path.dirname(__file__), "../config", "config.yaml")
     config_all = load_config(config_path)
+    model_path = args.model
 
-    config_model = load_config(args.model)
     logger.info(f"Using model: {args.model}")
-
-    model_path = setup_model_path(config_all, args.model)
 
     adapter_path = setup_adapter_path(
         model_path, args.adapter, args.adapter_quantization
     )
     prompt = args.prompt
-    full_eval = args.full_eval
+    full_eval = args.full_set
 
     prompt_instruction = dynamic_import(f"utils.{prompt}", "prompt_instruction")
     model_quantization, bitsandbytes = setup_bits_and_bytes_config(
@@ -173,7 +170,7 @@ def main():
     logger.info("Load the data for evaluation")
     # Load the data from the model prediction
     eval_result_path = config_all["llm_params"]["eval_result_path"]
-    training_set_outdir = config_all["llm_params"]["training_set_path"]
+    training_set_outdir = config_all["llm_params"]["training_set_outdir"]
 
     training_set_path = f"{training_set_outdir}_{prompt}.hf"
 
@@ -263,8 +260,9 @@ def main():
 
     results = {
         "date": datetime.datetime.now().strftime("%d/%m/%Y %H:%M"),
-        "model_name": config_model["model"],
+        "model_name": model_path.split("/")[-1],
         "model_quantization": model_quantization,
+        # "model_torchtype":
         "adapter": args.adapter,
         "adapter_quantization": args.adapter_quantization,
         "score_agg": overall_average_score,
