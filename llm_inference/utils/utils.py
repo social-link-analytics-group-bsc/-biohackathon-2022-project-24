@@ -39,12 +39,6 @@ def dynamic_import(module_name: str, variable_name: str):
         raise Exception(f"Error: {e}")
 
 
-def setup_model_path(config_all, config_model):
-    model_outdir = config_all["llm_params"]["model_outdir"]
-    model_name = config_model["model"]
-    return os.path.join(model_outdir, model_name)
-
-
 def setup_adapter_path(model_path, adapter=False, quantization=False):
     logger.debug(
         f"Adapter: {adapter} - model path: {model_path} - quantization: {quantization}"
