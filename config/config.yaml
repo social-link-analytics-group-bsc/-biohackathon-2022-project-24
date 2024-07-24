@@ -45,6 +45,7 @@ llm_params:
   eval_result_path: ./data/results/evaluation_models.json
   model_outdir: ./llm_models/
   training_set_outdir: ./data/training_data/
+  training_set_name: final_dataset.hf
   generation_params:
     # context_size: 2048
     # n_threads: 10

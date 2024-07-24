@@ -27,7 +27,8 @@ class LLMHandler:
         prompt_instruction=None,
         bits_and_bytes_config=None,
         adapter_path=None,
-        torchtype=torch.bfloat16,
+        # torchtype=torch.bfloat16,
+        torchtype=torch.float,
     ):
         # self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.device = "auto"
@@ -129,7 +130,7 @@ class LLMHandler:
     def encode_input(self, message):
         inputs = self.tokenizer(
             message, return_tensors="pt", add_generation_prompt=False
-        )  # .to(self.device)
+        ).to(self.device)
         return inputs
 
     def generate_output(self, encoded):
