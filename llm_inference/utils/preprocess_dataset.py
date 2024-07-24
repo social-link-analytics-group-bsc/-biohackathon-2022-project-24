@@ -42,12 +42,9 @@ def _extract_labels(example):
                     label = "p_female"
                 if label == "perc_fem":
                     label = "perc_female"
-                # if label not in token_to_label.keys():
-                #     print(label)
-                #     raise
                 value = example["tokens"][span["token_start"]]["id"]
                 token_to_label.setdefault(label, []).append(value)
-            # FIXME no idea what this part does it is Blanca code
+            # FIXME no idea what this part does, it is Blanca code
             else:
                 for r in range(
                     span["token_start"], span["token_end"] + 1
@@ -68,18 +65,17 @@ def _extract_labels(example):
     return example
 
 
-def remove_none_values(d):
+def _remove_none_values(d):
     """
     Remove all the None answer to avoid inflating the comparison when it does not provide any values
     """
     if not isinstance(d, dict):
         return d
-    return {k: remove_none_values(v) for k, v in d.items() if v is not None}
+    return {k: _remove_none_values(v) for k, v in d.items() if v is not None}
 
 
 def _format_labels(example):
     labels = example["labels"].copy()
-    print(f"\nLABELS:\n{example['labels']}")
     example["labels"] = dict()
     example["labels"]["sample"] = dict()
     example["labels"]["sample"]["total"] = labels["sample"]
@@ -93,8 +89,7 @@ def _format_labels(example):
     example["labels"]["female"]["total"] = labels["n_female"]
     example["labels"]["female"]["sample"] = labels["n_female_p"]
     # Remove none value keys
-    example["labels"] = remove_none_values(example["labels"])
-    print(f"REFORMATED LABELS:\n{example['labels']}")
+    example["labels"] = _remove_none_values(example["labels"])
     return example
 
 
