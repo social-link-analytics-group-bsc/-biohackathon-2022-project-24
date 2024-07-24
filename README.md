@@ -25,9 +25,9 @@ Machine learning
 
 
 
-### Process 
+## Process 
 
-#### Data retrieval
+### Data retrieval
 1. Getting a list of pmcids from a specific query done directly to the EuropePMC
 2. Using that list of pmcids to do a request and download the xml resource
 3. Parsing the xml file to build the different field
@@ -36,7 +36,29 @@ Machine learning
 6. Extracting the relevant data
 7. Plugging that data to analysis
 
-#### Analysis
+
+### Deployment of LLM models on Marenostrum 
+
+1. Loading the required modules to run pytorch 
+
+```bash
+module load  mkl/2024.0 nvidia-hpc-sdk/23.11-cuda11.8 openblas/0.3.27-gcc cudnn/9.0.0-cuda11 tensorrt/10.0.0-cuda11 impi/2021.11 hdf5/1.14.1-2-gcc gcc/11.4.0 python/3.11.5-gcc nccl/2.19.4 pytorch  ncurses tmux
+```
+2. Installation
+Create the virtual environement and install the requirements located in `requirements.txt`(the file is tailored for Marenostrum, if the goal is to install the repository on a different computer it needs to be cleaned of marenostrum path)
+
+```bash
+python -m venv venv 
+source venv/bin/activate
+pip install -r requirements.txt
+```
+3. Running
+
+
+
+
+
+### Analysis
 
 
 

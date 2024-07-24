@@ -6,10 +6,9 @@ import json
 import logging
 import datetime
 from langchain.evaluation import JsonEditDistanceEvaluator
-import datasets
 from datasets import DatasetDict
 from utils.inference_class import LLMHandler, LLMHandlerInstruct
-from utils.prompt_instructions import prompt_instruction_3 as prompt_instruction
+from utils.preprocess_dataset import process_dataset, print_simple_info
 from utils.utils import (
     dynamic_import,
     load_config,
@@ -81,6 +80,13 @@ def parser():
         required=False,
         help="To run the evaluation on the entire dataset instead of splitting it",
     )
+    parser.add_argument(
+        "--training_set",
+        default=None,
+        type=str,
+        required=True,
+        help="path to the training set",
+    )
 
     return parser
 
@@ -143,6 +149,7 @@ def main():
     )
     prompt = args.prompt
     full_eval = args.full_eval
+    dataset_path = args.training_set
 
     prompt_instruction = dynamic_import(f"utils.{prompt}", "prompt_instruction")
     model_quantization, bitsandbytes = setup_bits_and_bytes_config(
@@ -173,12 +180,10 @@ def main():
     logger.info("Load the data for evaluation")
     # Load the data from the model prediction
     eval_result_path = config_all["llm_params"]["eval_result_path"]
-    training_set_outdir = config_all["llm_params"]["training_set_path"]
 
-    training_set_path = f"{training_set_outdir}_{prompt}.hf"
+    ds_training_set = process_dataset(dataset_path, prompt_instruction)
+    print_simple_info(ds_training_set)
 
-    # FIXME Need to move that into the prep dataset to ensure reproductiblity (but the seed should be enough)
-    ds_training_set = datasets.load_from_disk(training_set_path)
     if full_eval is True:
         data_loaded = ds_training_set
     else:
@@ -264,6 +269,9 @@ def main():
     results = {
         "date": datetime.datetime.now().strftime("%d/%m/%Y %H:%M"),
         "model_name": config_model["model"],
+        "prompt": str(prompt),
+        "dataset": str(dataset_path),
+        "full_eval": str(full_eval),
         "model_quantization": model_quantization,
         "adapter": args.adapter,
         "adapter_quantization": args.adapter_quantization,
