@@ -42,16 +42,14 @@ def parser():
     )
     parser.add_argument(
         "--instruct",
-        default=True,
-        type=bool,
-        required=True,
+        action="store_true",  # Required to work like a switch
+        required=False,
         help="If the model is an instruct model or not",
     )
 
     parser.add_argument(
         "--adapter",
-        default=False,
-        type=bool,
+        action="store_true",  # Required to work like a switch
         required=False,
         help="To know if load a adapter or not",
     )
@@ -73,9 +71,8 @@ def parser():
     )
 
     parser.add_argument(
-        "--full_set",
-        default=False,
-        type=bool,
+        "--full_eval",
+        action="store_true",  # Required to work like a switch
         required=False,
         help="To run the evaluation on the entire dataset instead of splitting it",
     )
@@ -138,6 +135,7 @@ def main():
     config_path = os.path.join(os.path.dirname(__file__), "../config", "config.yaml")
     config_all = load_config(config_path)
     model_path = args.model
+    model_name = model_path.split("/")[-1]
 
     logger.info(f"Using model: {args.model}")
 
@@ -148,29 +146,6 @@ def main():
     full_eval = args.full_eval
     dataset_path = args.training_set
     prompt_instruction = dynamic_import(f"utils.{prompt}", "prompt_instruction")
-    model_quantization, bitsandbytes = setup_bits_and_bytes_config(
-        args.quantization, config_all["llm_params"]["bits_and_bytes"]
-    )
-    logger.info(f"BitsAndBytes Config:\n\t{bitsandbytes}")
-    generation_params = config_all["llm_params"]["generation_params"]
-    logger.info(f"Generation params:\n\t{generation_params}")
-
-    logger.info("Load the model in the GPU(s)")
-    if args.instruct is True:
-        llm_model = LLMHandlerInstruct(
-            model_path,
-            generation_params,
-            bits_and_bytes_config=bitsandbytes,
-            adapter_path=adapter_path,
-        )
-    else:
-        llm_model = LLMHandler(
-            model_path,
-            generation_params,
-            bits_and_bytes_config=bitsandbytes,
-            adapter_path=adapter_path,
-        )
-    logger.info("Model loaded")
 
     ## Dataset
     logger.info("Load the data for evaluation")
@@ -202,6 +177,31 @@ def main():
         data_loaded = training_set["test"]
     logger.info(f"Data loadaed:\n{data_loaded}")
 
+    ## Model loading
+    model_quantization, bitsandbytes = setup_bits_and_bytes_config(
+        args.quantization, config_all["llm_params"]["bits_and_bytes"]
+    )
+    logger.info(f"BitsAndBytes Config:\n\t{bitsandbytes}")
+    generation_params = config_all["llm_params"]["generation_params"]
+    logger.info(f"Generation params:\n\t{generation_params}")
+
+    logger.info("Load the model in the GPU(s)")
+    if args.instruct is True:
+        llm_model = LLMHandlerInstruct(
+            model_path,
+            generation_params,
+            bits_and_bytes_config=bitsandbytes,
+            adapter_path=adapter_path,
+        )
+    else:
+        llm_model = LLMHandler(
+            model_path,
+            generation_params,
+            bits_and_bytes_config=bitsandbytes,
+            adapter_path=adapter_path,
+        )
+    logger.info("Model loaded")
+
     # Instanciate the evaluation. Using Distance to provide a score of distance
     evaluator = JsonEditDistanceEvaluator()
 
@@ -214,7 +214,6 @@ def main():
         answer_training = data["answer_training"]
         answer_type = data["answer"]
 
-        # prompt_instruction = data["prompt_instruction"]
         pmcid = data["pmcid"]
         method_text = data["text"][0:100]
         answer = llm_model.passing_article_to_llm(
@@ -222,10 +221,8 @@ def main():
         )
 
         ref_json = format_answer(answer_training)
-        # print(f"Ref json: {ref_json} - Type: {type(ref_json)}")
 
         pred_json = format_answer(answer)
-        # print(f"pred json: {pred_json} - Type: {type(pred_json)}")
 
         cleaned_pred_json = clean_keys(reference=ref_json, answer=pred_json)
 
@@ -263,12 +260,10 @@ def main():
 
     results = {
         "date": datetime.datetime.now().strftime("%d/%m/%Y %H:%M"),
-
-        "model_name": config_model["model"],
+        "model_name": model_name,
         "prompt": str(prompt),
         "dataset": str(dataset_path),
         "full_eval": str(full_eval),
-
         "model_quantization": model_quantization,
         # "model_torchtype":
         "adapter": args.adapter,

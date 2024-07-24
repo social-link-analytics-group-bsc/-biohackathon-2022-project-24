@@ -2,6 +2,7 @@
 # Based on Blanca Calvo script and adapted
 import os
 import sys
+import logging
 import yaml
 import collections
 import argparse
@@ -9,6 +10,10 @@ from datasets import load_dataset, Dataset, ClassLabel
 
 from utils.utils import dynamic_import
 
+logger = logging.getLogger(
+    __name__
+)  ## Supposed to be a global logger to work in concurrent.futures
+logging.basicConfig(level=logging.INFO)
 
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
@@ -188,9 +193,9 @@ def process_dataset(dataset_path, prompt_instruction):
 
 
 def print_simple_info(dataset):
-    print(dataset)
-    print(collections.Counter(dataset["answer"]))
-    print(collections.Counter(dataset["_annotator_id"]))
+    logging.info(dataset)
+    logging.info(collections.Counter(dataset["answer"]))
+    logging.info(collections.Counter(dataset["_annotator_id"]))
 
 
 def main():
