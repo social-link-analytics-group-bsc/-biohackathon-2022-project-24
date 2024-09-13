@@ -152,12 +152,13 @@ def get_annotations(doc, pmcid, classifier, tokenizer) -> dict:
 
 
 def postprocess_methods_from_db(SQLentries):
-    '''Remove empty methods sections, and add spaces between title and text'''
+    '''Remove empty methods sections, and add spaces between sections'''
 
     # Instantiate a lists
     pmcids = []
     methods = []
 
+    # TODO - This can be removed if the issue with the '\n' has been removed.
     # REGEX
     # Define the list of words to add space after, if not followed by a space or 's' and a space
     title_words = ['method(s|ology|ologies)', 'samples', 'subjects', 'patients', 'participants', 'materials', 'setting[s]?', 'procedure[s]?', 'dataset[s]?', 'statement[s]?', 'population[s]?', 'collection[s]?', 'preparation[s]?', 'ethic[s]?', 'system[s]?', 'culture[s]?']
@@ -188,6 +189,7 @@ def get_methods_from_db(db_file, limit_value, offset_value=0) -> list:
     SQL_QUERY = 'SELECT sections.pmcid, sections.METHODS FROM sections LIMIT ? OFFSET ?;'
     cur.execute(SQL_QUERY,(limit_value, offset_value))
     SQLentries = cur.fetchall()
+
 
     pmcids, methods = postprocess_methods_from_db(SQLentries)
 
@@ -267,8 +269,10 @@ if __name__ == '__main__':
 
 
 '''
+
+
 Innvocation example:
-    python3 ner_output_to_prodigy_input.py --output annotations.jsonl
+    python3 ner_output_to_prodigy_input.py --output annotations/original_annotations.jsonl
     
     python3 -m prodigy mark bh_23 annotations_script.jsonl  --label sample,n_male,n_female,perc_male,perc_female --view-id ner_manual
 

@@ -142,4 +142,5 @@ pipeline/train_model/trained_models/
 # Prodigy folder
 prodigy/mounted_gpfs/
 prodigy/.crap
-prodigy/annotations/
+prodigy/*annotations
+prodigy/sensible_config.sh
