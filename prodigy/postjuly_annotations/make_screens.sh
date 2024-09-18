@@ -4,12 +4,10 @@
 
 session='session_name'
 
-
-
 # Source the config file w/ sensitive data (won't be uploaded to git)
 PRODIGY_VENV_PATH=''
 BASE_PORT=''
-source ./sensible_config.sh
+source ../sensible_config.sh
 
 # Labels for Prodigy
 LABELS="sample,n_male,n_female,perc_male,perc_female,sample_p,n_male_p,n_female_p,perc_male_p,perc_female_p"
