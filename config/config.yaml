@@ -40,6 +40,7 @@ db_params:
   table_status: status
   table_sections: sections
   table_metadata: article_metadata
+  table_inference: inference
  
 llm_params:
   eval_result_path: ./data/results/evaluation_models.json

@@ -1,15 +1,14 @@
 import sys
 import argparse
-import ast
 import json
 import os
 import datetime
 import logging
-from typing import Optional
 
 from langchain.evaluation import JsonEditDistanceEvaluator
 from datasets import DatasetDict
 from utils.model_loader import ModelLoader
+from utils.post_process_answer import format_answer
 from utils.preprocess_dataset import process_dataset, print_simple_info
 from utils.utils import (
     dynamic_import,
@@ -30,6 +29,26 @@ def setup_logger() -> logging.Logger:
 
 
 logger = setup_logger()
+
+
+def clean_keys(answer: dict, reference: dict) -> dict:
+    """
+    Recursively ensure the keys in 'answer' match those in 'reference'.
+    Unmatched keys in 'answer' are pruned.
+    """
+    if not isinstance(reference, dict) or not isinstance(answer, dict):
+        return answer
+
+    pruned = {}
+    for key in set(reference.keys()) | set(answer.keys()):
+        ref_value = reference.get(key)
+        ans_value = answer.get(key)
+        if ref_value == ans_value:
+            if isinstance(ref_value, dict) and isinstance(ans_value, dict):
+                pruned[key] = clean_keys(ans_value, ref_value)
+            else:
+                pruned[key] = ref_value
+    return pruned
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -71,42 +90,6 @@ def parse_arguments() -> argparse.Namespace:
     )
 
     return parser.parse_args()
-
-
-def format_answer(answer: str) -> Optional[dict]:
-    """Safely evaluate a string as Python literal."""
-    try:
-        return ast.literal_eval(answer)
-    except (ValueError, SyntaxError) as e:
-        logger.error(f"Invalid answer format: {e}")
-        return None
-
-
-def clean_keys(answer: dict, reference: dict) -> dict:
-    """
-    Recursively ensure the keys in 'answer' match those in 'reference'.
-    Unmatched keys in 'answer' are pruned.
-    """
-    if not isinstance(reference, dict) or not isinstance(answer, dict):
-        return answer
-
-    pruned = {}
-    for key in set(reference.keys()) | set(answer.keys()):
-        ref_value = reference.get(key)
-        ans_value = answer.get(key)
-        if ref_value == ans_value:
-            if isinstance(ref_value, dict) and isinstance(ans_value, dict):
-                pruned[key] = clean_keys(ans_value, ref_value)
-            else:
-                pruned[key] = ref_value
-    return pruned
-
-
-def remove_none_values(d: dict) -> dict:
-    """Recursively remove None values from a dictionary."""
-    if not isinstance(d, dict):
-        return d
-    return {k: remove_none_values(v) for k, v in d.items() if v is not None}
 
 
 def return_eval_score(
@@ -158,21 +141,19 @@ def evaluate_model_on_data(
             prompt_instruction=prompt_instruction, text=method_text
         )
 
-        ref_json = format_answer(answer_training)
-        pred_json = format_answer(predicted_answer)
+        clean_ref_json = format_answer(answer_training)
+        clean_pred_json = format_answer(predicted_answer)
 
-        if ref_json is None or pred_json is None:
+        if clean_ref_json is None or clean_pred_json is None:
             logger.warning(f"Skipping data point {pmcid} due to invalid format.")
             continue
-
-        cleaned_pred_json = remove_none_values(clean_keys(pred_json, ref_json))
-        cleaned_ref_json = remove_none_values(ref_json)
+        clean_pred_json = clean_keys(clean_pred_json, answer_training)
 
         if answer_type == 0:
-            logger.debug(f"Cleaned pred json: {cleaned_pred_json}")
-            logger.debug(f"Cleaned ref json: {cleaned_ref_json}")
+            logger.debug(f"Cleaned pred json: {clean_pred_json}")
+            logger.debug(f"Cleaned ref json: {clean_ref_json}")
 
-        score = return_eval_score(evaluator, cleaned_ref_json, cleaned_pred_json)
+        score = return_eval_score(evaluator, clean_ref_json, clean_pred_json)
         scores_by_answer_type.setdefault(answer_type, []).append(score)
 
         logger.info(f"{pmcid}: {answer_type}: {score}")
@@ -183,7 +164,7 @@ def evaluate_model_on_data(
     return scores_by_answer_type
 
 
-def calculate_average_scores(scores_by_answer_type: dict) -> Tuple[float, dict]:
+def calculate_average_scores(scores_by_answer_type: dict) -> tuple[float, dict]:
     """Calculate overall and per answer-type average scores."""
     total_scores = [
         score for scores in scores_by_answer_type.values() for score in scores

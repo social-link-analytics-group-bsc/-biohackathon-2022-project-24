@@ -4,6 +4,9 @@ from peft import PeftConfig
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 
 
+logging.basicConfig(level=logging.INFO)
+
+
 class LLMHandler:
     def __init__(
         self,
@@ -15,6 +18,8 @@ class LLMHandler:
         # torchtype=torch.bfloat16,
         torchtype=torch.float,
     ):
+        self.logger = logging.getLogger(self.__class__.__name__)
+        self.logger.setLevel(logging.INFO)
         # self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.device = "auto"
         self.torchtype = torchtype
@@ -23,8 +28,6 @@ class LLMHandler:
         self.generation_params = generation_params
         self._generate_bits_and_bytes(bits_and_bytes_config)
         self._load_model(model_path, adapter_path)
-        self.logger = logging.getLogger(self.__class__.__name__)
-        self.logger.setLevel(logging.INFO)
         self._print_state()
 
     def _generate_bits_and_bytes(self, quantization_config):
