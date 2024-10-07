@@ -4,7 +4,7 @@ import logging
 from typing import Optional, Tuple
 
 from utils.handlers import LLMHandler, LLMHandlerInstruct
-from utils import setup_bits_and_bytes_config, setup_adapter_path
+from utils.utils import setup_bits_and_bytes_config, setup_adapter_path
 
 
 class ModelLoader:
