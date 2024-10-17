@@ -19,6 +19,8 @@ ssh transfer3.bsc.es
 scp git ./$FOLDER
 ```
 
+Once theses steps are done, you can log out from the `transfer3.bsc.es` node and connect to the ACC node `alogin4.bsc.es` 
+
 3. Install libraries
 To install the library, the different modules are needed
 
@@ -27,6 +29,7 @@ cd ./$FOLDER
 module purge &&
 module load  mkl/2024.0 nvidia-hpc-sdk/23.11-cuda11.8 openblas/0.3.27-gcc cudnn/9.0.0-cuda11 tensorrt/10.0.0-cuda11 impi/2021.11 hdf5/1.14.1-2-gcc gcc/11.4.0 python/3.11.5-gcc nccl/2.19.4 pytorch
 python -m venv venv
+source venv/bin/activate
 pip install -U -r requirements_311.txt
 pip install sympy --ignore-installed
 ```
@@ -51,7 +54,7 @@ The data are not in the github repository. You need to copy your local data in t
 There are 2 different datasets you need depending if you want to evaluate the model and the prompt or running on the full dataset. 
 To run the evaluation, the dataset is in jsonl format. The entire dataset shoudl be a sqlite3 file containing the entire downloaded articles from pubmed
 
-Once theses steps are done, you can log out from the `transfer3.bsc.es` node and connect to the ACC node `alogin4.bsc.es` 
+
 
 ### Activate environment
 
