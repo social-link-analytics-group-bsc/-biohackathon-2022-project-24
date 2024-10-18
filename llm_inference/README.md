@@ -12,13 +12,11 @@ Before running the model it is needed to install the dependencies and downloadin
 ```bash
 ssh transfer3.bsc.es
 ```
-
 2. copy your local git folder to your userfolder on Marenostrum
 
 ```bash
 scp git ./$FOLDER
 ```
-
 Once theses steps are done, you can log out from the `transfer3.bsc.es` node and connect to the ACC node `alogin4.bsc.es`
 
 3. Install libraries
@@ -30,12 +28,12 @@ module purge
 module load mkl intel impi hdf5 python cuda
 # Equal to module load mkl/2024.0 intel/2024.0.1-sycl_cuda impi/2021.11 hdf5/1.14.1-2 python/3.12.1 cuda/12.2` at time of writing 2024-10-18
 python -m venv venv
-
 source venv/bin/activate
-
 pip install -U langchain duckdb transformers accelerate peft datasets bitsandbytes rapidfuzz
 ```
+
 Alternatively to installing packages manually
+
 ```
 pip install -U -r requirements.txt
 ```
@@ -45,12 +43,14 @@ Before using huggingface-cli to download the model it is needed to get an API To
 To generate a token follow the guide here [https://huggingface.co/docs/hub/en/security-tokens](https://huggingface.co/docs/hub/en/security-tokens) and remember you can only see it once. 
 Once it is done you can go to the models's folder and download the model you want. 
 You need to use the `--cache-dir` option otherwise you will run out of space for caching the model during the download
+
 ```bash
 cd llm_models/
 huggingface-cli download mistralai/Mistral-7B-Instruct-v0.3 --local-dir ./mixtral_7b_instruct_v03 --cache-dir ./cache 
 ```
 
 5. Dataset preparation
+
 The data are not in the github repository. You need to copy your local data in the data folder.
 There are 2 different datasets you need depending if you want to evaluate the model and the prompt or running on the full dataset. 
 To run the evaluation, the dataset is in jsonl format. The entire dataset shoudl be a sqlite3 file containing the entire downloaded articles from pubmed
@@ -59,6 +59,14 @@ To run the evaluation, the dataset is in jsonl format. The entire dataset shoudl
 In order for duckdb to work with sqlite3 the plugin sql needs to be installed.
 Simply running the scrip `../duckdb_sqlite_installation.py` suffices.
 
+
+### Activate environment
+
+```bash
+module purge &&
+module load  mkl/2024.0 nvidia-hpc-sdk/23.11-cuda11.8 openblas/0.3.27-gcc cudnn/9.0.0-cuda11 tensorrt/10.0.0-cuda11 impi/2021.11 hdf5/1.14.1-2-gcc gcc/11.4.0 python/3.11.5-gcc nccl/2.19.4 pytorch
+source venv/bin/activate
+```
 
 ## Running the script
 

@@ -1,5 +1,6 @@
 import ast
 import jsonschema
+
 import logging
 from typing import Optional
 
@@ -66,6 +67,7 @@ json_schema = {
     },
     # "required": ["answer", "labels"]
 }
+
 
 
 def format_to_json(answer: str) -> Optional[dict]:

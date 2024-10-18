@@ -23,6 +23,7 @@ class LLMHandler:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         
         self.device_map = "auto"
+
         self.torchtype = torchtype
         self._print_state()
         self.prompt_instruction = prompt_instruction
@@ -55,6 +56,7 @@ class LLMHandler:
                 attn_implementation="sdpa",  # use sdpa, alternatively use "flash_attention_2"
                 quantization_config=self.quantization,
                 device_map=self.device_map,
+
             )
             self.tokenizer = AutoTokenizer.from_pretrained(
                 config.base_model_name_or_path
@@ -70,6 +72,7 @@ class LLMHandler:
                 torch_dtype=self.torchtype,
                 # low_cpu_mem_usage=True,
                 device_map=self.device_map,
+
                 quantization_config=self.quantization,
             )
             self.tokenizer = AutoTokenizer.from_pretrained(model_path)
@@ -81,11 +84,13 @@ class LLMHandler:
         """
         # Check cuda
         print("Using self.device:", self.device_map)
+
         print()
 
         # Additional Info when using cuda
         try:
             if self.device== "cuda":
+
                 print(torch.cuda.get_device_name(0))
                 print("Memory Usage:")
                 print(
@@ -123,6 +128,7 @@ class LLMHandler:
             message, return_tensors="pt", 
             # add_generation_prompt=False
         ).to(self.model.device)
+
         return inputs
 
     def generate_output(self, encoded):
@@ -137,6 +143,7 @@ class LLMHandler:
     def retrieve_answer(self, inputs, outputs):
 
         prompt_length = inputs['input_ids'].shape[1]
+
 
         return self.tokenizer.decode(
             outputs[0][prompt_length:], skip_special_tokens=True
@@ -165,4 +172,5 @@ class LLMHandlerInstruct(LLMHandler):
             add_generation_prompt=True,
             add_special_tokens=True,
         ).to(self.model.device)
+
         return inputs
