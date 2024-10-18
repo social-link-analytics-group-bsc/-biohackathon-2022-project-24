@@ -1,9 +1,21 @@
+import os
+import ast
+import sys
+import yaml
+import json
+import logging
 import logging
 import torch
+import datasets
 from peft import PeftConfig
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 
+from utils.prompt_instructions import prompt_instruction_3, json_response_format
 
+
+logger = logging.getLogger(
+    __name__
+)  ## Supposed to be a global logger to work in concurrent.futures
 logging.basicConfig(level=logging.INFO)
 
 
@@ -18,11 +30,8 @@ class LLMHandler:
         # torchtype=torch.bfloat16,
         torchtype=torch.float,
     ):
-        self.logger = logging.getLogger(self.__class__.__name__)
-        self.logger.setLevel(logging.INFO)
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        
-        self.device_map = "auto"
+        # self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = "auto"
         self.torchtype = torchtype
         self._print_state()
         self.prompt_instruction = prompt_instruction
@@ -42,7 +51,7 @@ class LLMHandler:
             self.quantization = None
 
     def _load_model(self, model_path, adapter_path):
-        self.logger.info(
+        logger.info(
             f"Load: {model_path} - adapter_path: {adapter_path} - quantisation: {self.quantization}"
         )
         # Load the Lora model
@@ -54,7 +63,7 @@ class LLMHandler:
                 torch_dtype=self.torchtype,
                 attn_implementation="sdpa",  # use sdpa, alternatively use "flash_attention_2"
                 quantization_config=self.quantization,
-                device_map=self.device_map,
+                device_map=self.device,
             )
             self.tokenizer = AutoTokenizer.from_pretrained(
                 config.base_model_name_or_path
@@ -69,7 +78,7 @@ class LLMHandler:
                 attn_implementation="sdpa",  # use sdpa, alternatively use "flash_attention_2"
                 torch_dtype=self.torchtype,
                 # low_cpu_mem_usage=True,
-                device_map=self.device_map,
+                device_map=self.device,
                 quantization_config=self.quantization,
             )
             self.tokenizer = AutoTokenizer.from_pretrained(model_path)
@@ -80,12 +89,12 @@ class LLMHandler:
         Print the device information
         """
         # Check cuda
-        print("Using self.device:", self.device_map)
+        print("Using self.device:", self.device)
         print()
 
         # Additional Info when using cuda
         try:
-            if self.device== "cuda":
+            if self.device.type == "cuda":
                 print(torch.cuda.get_device_name(0))
                 print("Memory Usage:")
                 print(
@@ -98,7 +107,7 @@ class LLMHandler:
                     round(torch.cuda.memory_reserved(0) / 1024**3, 1),
                     "GB",
                 )
-        except AttributeError:
+        except AttributeError:  # In case of auton
             pass
 
     def _check_prompt_instruction(self, prompt_instruction):
@@ -120,9 +129,8 @@ class LLMHandler:
 
     def encode_input(self, message):
         inputs = self.tokenizer(
-            message, return_tensors="pt", 
-            # add_generation_prompt=False
-        ).to(self.model.device)
+            message, return_tensors="pt", add_generation_prompt=False
+        ).to(self.device)
         return inputs
 
     def generate_output(self, encoded):
@@ -136,7 +144,7 @@ class LLMHandler:
 
     def retrieve_answer(self, inputs, outputs):
 
-        prompt_length = inputs['input_ids'].shape[1]
+        prompt_length = inputs.shape[1]
 
         return self.tokenizer.decode(
             outputs[0][prompt_length:], skip_special_tokens=True
@@ -164,5 +172,77 @@ class LLMHandlerInstruct(LLMHandler):
             return_tensors="pt",
             add_generation_prompt=True,
             add_special_tokens=True,
-        ).to(self.model.device)
+        )
+        # .to(self.device)
         return inputs
+
+
+def main():
+
+    # Load the config path
+    config_path = os.path.join(os.path.dirname(__file__), "../config", "config.yaml")
+    config_all = yaml.safe_load(open(config_path))
+
+    logger.info("Load the data for evaluation")
+    # Load the data from the model prediction
+    training_set_path = config_all["llm_params"]["training_set_path"]
+    data_loaded = datasets.load_from_disk(training_set_path)
+    logger.info("Data loadaed")
+
+    # LLM setting
+    model_outdir = config_all["llm_params"]["model_outdir"]
+    model_name = config_all["llm_params"]["model_name"]
+    model_path = f"{model_outdir}/{model_name}"
+    instruct_model = config_all["llm_params"]["instruct_model"]
+    # Get the adapter
+    try:
+        adapter_name = config_all["llm_params"]["adapter"]
+        adapter_path = f"{model_outdir}/{adapter_name}"
+    except KeyError:
+        adapter_path = None
+    generation_params = config_all["llm_params"]["generation_params"]
+    # Load bitsandBytes config
+    try:
+        bits_and_bytes_config = config_all["llm_params"]["bits_and_bytes_config"]
+    except KeyError:
+        bits_and_bytes_config = None
+
+    # Instantiate the model
+    logger.info("Load the model in the GPU(s)")
+    if instruct_model:
+        llm_model = LLMHandlerInstruct(
+            model_path,
+            generation_params,
+            bits_and_bytes_config=bits_and_bytes_config,
+            adapter_path=adapter_path,
+        )
+    else:
+        llm_model = LLMHandler(
+            model_path,
+            generation_params,
+            bits_and_bytes_config=bits_and_bytes_config,
+            adapter_path=adapter_path,
+        )
+    logger.info("Model loaded")
+    methods = [
+        "There is 4 women and 3 men for a total of 7 subjects",
+        "Only 1 woman agreed",
+        "Among the 12 mice, only 4 were alive at the end of the experiment",
+    ]  # Define your method section text
+    # text_output, prompt_text, answer = llm_handler.passing_article_to_llm(methods)
+    for example in methods:
+        text_output = llm_model.passing_article_to_llm(
+            example, prompt_instruction=prompt_instruction_3
+        )
+        # print("PROMPT CONTEXT:\n")
+        # print(prompt_text)
+        # print("\n")
+        # print("GENERATED ANSWER:\n")
+        # print(answer)
+        # print("\n")
+        print("TEXT OUTPUT:\n")
+        print(text_output)
+
+
+if __name__ == "__main__":
+    main()

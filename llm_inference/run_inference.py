@@ -64,44 +64,41 @@ def parse_arguments() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def get_count_text(conn, table_sections, table_status):
+def get_matching_pmcid(conn, table_sections, table_status):
     """
-    Get the counts from the query
+    Get the pmcid list of matching research
     """
     cursor = conn.cursor()
     query = f"""
-        SELECT COUNT(*)
-        FROM {table_sections} ts
-        JOIN {table_status} st ON ts.PMCID = st.PMCID
-        WHERE st.SUBJECTS = 1 OR st.METHODS = 1
+        SELECT PMCID
+        FROM {table_status}
+        WHERE SUBJECTS = 1 OR METHODS = 1
     """
     cursor.execute(query)
-    count = cursor.fetchone()[0]
+    pmcid = cursor.fetchall()
+    pmcid_list = [row[0] for row in pmcid]
     cursor.close()
-    return count
+    return pmcid_list
 
 
-def get_text_from_db(conn, table_sections, table_status):
+def get_text_from_db(conn, table_sections, pmcid):
     """
     Get the already recorded pmcids from db
     """
     cursor = conn.cursor()
-    # SQL query to join the sections table with the status table on PMCID
-    # and filter where at least one of the status columns is 1
     query = f"""
-        SELECT ts.PMCID, ts.ABSTRACT, ts.SUBJECTS, ts.METHODS
-        FROM {table_sections} ts
-        JOIN {table_status} st ON ts.PMCID = st.PMCID
-        WHERE st.SUBJECTS = 1 OR st.METHODS = 1
+        SELECT ABSTRACT, SUBJECTS, METHODS
+        FROM {table_sections} 
+        WHERE pmcid = ?
     """
-    cursor.execute(query)
-    # Close the cursor and connectiorow = cursor.fetchone()
-    row = cursor.fetchone()  # Fetch the next row
-    while row:
-        pmcid, abstract, subjects, method = row
-        yield pmcid, abstract, subjects, method
-        row = cursor.fetchone()  # Fetch the next row
+    cursor.execute(query, (pmcid,))
+    row = cursor.fetchone()
     cursor.close()
+    if row:
+        abstract, subjects, method = row
+        return abstract, subjects, method
+    else:
+        return None, None, None
 
 
 def insert_into_db(data, metadata, conn, table):
@@ -114,7 +111,7 @@ def insert_into_db(data, metadata, conn, table):
             INSERT INTO {table} (answer, sample_total, sample_sample, sample_sentence_where_found, 
                                  male_total, male_sample, male_sentence_where_found, 
                                  female_total, female_sample, female_sentence_where_found, 
-                                 date, model_name, prompt, model_quantization, adapter, adapter_quantization, pmcid) 
+                                 date, model, prompt, quantization, adapter, adapter_quantization, pmcid) 
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 "Not validated",
@@ -126,11 +123,10 @@ def insert_into_db(data, metadata, conn, table):
                 None,
                 None,
                 None,
-                None,
                 metadata["date"],
-                metadata["model_name"],
+                metadata["model"],
                 metadata["prompt"],
-                metadata["model_quantization"],
+                metadata["quantization"],
                 metadata["adapter"],
                 metadata["adapter_quantization"],
                 metadata["pmcid"],
@@ -152,7 +148,7 @@ def insert_into_db(data, metadata, conn, table):
             INSERT INTO {table} (answer, sample_total, sample_sample, sample_sentence_where_found, 
                                  male_total, male_sample, male_sentence_where_found, 
                                  female_total, female_sample, female_sentence_where_found, 
-                                 date, model_name, prompt, model_quantization, adapter, adapter_quantization, pmcid) 
+                                 date, model, prompt, quantization, adapter, adapter_quantization, pmcid) 
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 answer,
@@ -166,15 +162,16 @@ def insert_into_db(data, metadata, conn, table):
                 json.dumps(female.get("sample", [])),
                 json.dumps(female.get("sentence_where_found", [])),
                 metadata["date"],
-                metadata["model_name"],
+                metadata["model"],
                 metadata["prompt"],
-                metadata["model_quantization"],
+                metadata["quantization"],
                 metadata["adapter"],
                 metadata["adapter_quantization"],
                 metadata["pmcid"],
             ),
         )
 
+    cursor.close()
     conn.commit()
 
 
@@ -196,6 +193,27 @@ def main():
     table_inference = config_all["db_params"]["table_inference"]
     # # Using duckdb to access the sqlite file for compatibility on marenostrum
     conn = duckdb.connect(DB_FILE)
+    # TODO: refactor these keys with the other times I call the execute on this table in this code
+    create_inference_sql = f"""CREATE TABLE IF NOT EXISTS {table_inference} ( answer VARCHAR,
+    sample_total INTEGER,
+    sample_sample VARCHAR,
+    sample_sentence_where_found VARCHAR, 
+    male_total INTEGER,
+    male_sample VARCHAR,
+    male_sentence_where_found VARCHAR,
+    female_total INTEGER,
+    female_sample VARCHAR,
+    female_sentence_where_found VARCHAR,
+    date TIMESTAMP,
+    model VARCHAR,
+    prompt VARCHAR,
+    quantization VARCHAR,
+    adapter VARCHAR,
+    adapter_quantization VARCHAR,
+    pmcid VARCHAR);"""
+    c = conn.cursor()
+    c.execute(create_inference_sql)
+    conn.commit()
 
     # Initialize ModelLoader
     model_loader = ModelLoader(
@@ -219,19 +237,24 @@ def main():
     # add the date to the metadata
     metadata["date"] = date
     # Parsing the articles
-    total_articles = get_count_text(conn, table_sections, table_status)
+    pmcid_list = get_matching_pmcid(conn, table_sections, table_status)
     n = 0
-    for pmcid, abstract, subject, method in tqdm(
-        get_text_from_db(conn, table_sections, table_status), total=total_articles
-    ):
+    for pmcid in tqdm(pmcid_list):
+        abstract, subject, method = get_text_from_db(conn, table_sections, pmcid)
         # Add the PMCID to the metadata
         metadata["pmcid"] = pmcid
+        # if abstract:
+        #     print(f"PMCID: {pmcid}, Abstract: {abstract}, Subjects: {subject}, Methods: {method}")
+        # else:
+        #     print(f"No data found for PMCID: {pmcid}")
+
         if method is not None:
             answer = llm_model.passing_article_to_llm(
                 prompt_instruction=prompt_instruction,
                 text=method,
             )
         else:
+            print(pmcid)
             answer = None
 
         inference_full_answer = format_answer(answer)
@@ -241,11 +264,10 @@ def main():
             conn=conn,
             table=table_inference,
         )
-
-        n += 1
-        if n == 10:
-            raise
-
+    #
+    #     n += 1
+    #     if n == 10:
+    #         raise
 
 if __name__ == "__main__":
     main()

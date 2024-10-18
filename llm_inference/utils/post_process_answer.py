@@ -99,3 +99,5 @@ def remove_none_values(d: Optional[dict]) -> Optional[dict]:
 def format_answer(answer: str) -> Optional[dict]:
     answer = format_to_json(answer)
     return validate_json(answer, json_schema)
+    answer = remove_none_values(answer)
+    return answer
