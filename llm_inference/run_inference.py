@@ -257,6 +257,7 @@ def main():
             print(pmcid)
             answer = None
 
+        print(answer)
         inference_full_answer = format_answer(answer)
         insert_into_db(
             data=inference_full_answer,
